@@ -190,6 +190,14 @@
       "bin": true
     }
   },
+  "redirects": {
+    "https://esm.sh/@types/three@~0.181.0/index.d.ts": "https://esm.sh/@types/three@0.181.0/index.d.ts"
+  },
+  "remote": {
+    "https://esm.sh/three@0.181.2": "9864cf2077ac5fd0c7f4c86793a37fe9a62db1850d4504f4d77b1f044d7a94b9",
+    "https://esm.sh/three@0.181.2/denonext/build/three.core.mjs": "513d0431e5eac1ace224aa43945efd32a5da788e9180a190d8a36e170ef1d1bd",
+    "https://esm.sh/three@0.181.2/denonext/three.mjs": "4a93b562cde4975a2bd5e6347270d4704ac13e0a1ab7dc154adb8fbfea5c1f30"
+  },
   "workspace": {
     "dependencies": [
       "npm:three@~0.181.2",

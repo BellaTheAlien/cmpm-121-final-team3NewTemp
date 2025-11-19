@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "https://esm.sh/three@0.181.2";
 //import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Create a simple scene
