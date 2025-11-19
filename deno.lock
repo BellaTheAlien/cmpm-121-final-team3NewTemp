@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:ammo.js@*": "0.0.10",
     "npm:three@~0.181.2": "0.181.2",
     "npm:vite@4.4.5": "4.4.5"
   },
@@ -115,6 +116,9 @@
       "os": ["win32"],
       "cpu": ["x64"]
     },
+    "ammo.js@0.0.10": {
+      "integrity": "sha512-jOv977u71jrDUzHfmQ99YaW90/y8YLn/3HFTmtLLzf5wJynAfG+/a1Ie5gbn0fE0uSAHxXVsFk4Bzq8qRPWqAA=="
+    },
     "esbuild@0.18.20": {
       "integrity": "sha512-ceqxoedUrcayh7Y7ZX6NdbbDzGROiyVBgC4PriJThBKSVPWnnFHZAkfI1lJT8QFkOwH4qOS2SJkS4wvpGl8BpA==",
       "optionalDependencies": [
@@ -200,6 +204,7 @@
   },
   "workspace": {
     "dependencies": [
+      "npm:ammo.js@*",
       "npm:three@~0.181.2",
       "npm:vite@4.4.5"
     ]
