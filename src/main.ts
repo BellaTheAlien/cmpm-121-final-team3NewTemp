@@ -25,7 +25,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(1 * 202020); // Scene Background Color
 const camera = new THREE.PerspectiveCamera( // Just Testing Camera Settings
   75,
-  window.innerWidth / window.innerHeight,
+  globalThis.innerWidth / globalThis.innerHeight,
   0.1,
   1000,
 );
