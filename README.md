@@ -1,3 +1,3 @@
-# CMPM 121 D1 Project
+# Team 3 DevLogs
 
-This is the starting point for your CMPM 121 D1 project. The goal of this project is to create a simple web application using TypeScript, Vite, and modern web development practices. Students should make sure to remove _this_ content from their README.md file and replace it with their own project documentation.
+## [DevLog #1 Nov 14, 2025](https://github.com/BellaTheAlien/cmpm-121-final-team3/blob/main/DevLog/Nov14DevLog.md)
