@@ -22,11 +22,26 @@ console.log("Physics world initialized");
 
 // Create a simple scene
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+scene.background = new THREE.Color(1 * 202020); // Scene Background Color
+const camera = new THREE.PerspectiveCamera( // Just Testing Camera Settings
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000,
+);
+
+// Cube
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
+
+//Platform
+const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
+const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+scene.add(platform);
+platform.position.y = -2.5;
 
 camera.position.z = 5;
 
@@ -53,13 +68,6 @@ const cubeBody = new AmmoLib.btRigidBody(rbInfo);
 physicsWorld.addRigidBody(cubeBody);
 
 console.log("Cube rigid body created");
-
-//Platform
-const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
-const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
-const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-scene.add(platform);
-platform.position.y = 1.5;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer();
