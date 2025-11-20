@@ -101,6 +101,13 @@ function animate() {
   cube.rotation.x += 0.01;
   cube.rotation.y += 0.01;
 
+  // Collision Detection
+  const platformTop = platform.position.y + 0.5;
+  if (cube.position.y - 1 <= platformTop) {
+    cube.position.y = platformTop + 1;
+    console.log("Cube collided with platform");
+  }
+
   renderer.render(scene, camera);
 }
 
