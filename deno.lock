@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@types/node@*": "24.2.0",
     "npm:ammo.js@*": "0.0.10",
     "npm:three@~0.181.2": "0.181.2",
     "npm:vite@4.4.5": "4.4.5"
@@ -116,6 +117,12 @@
       "os": ["win32"],
       "cpu": ["x64"]
     },
+    "@types/node@24.2.0": {
+      "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
+      "dependencies": [
+        "undici-types"
+      ]
+    },
     "ammo.js@0.0.10": {
       "integrity": "sha512-jOv977u71jrDUzHfmQ99YaW90/y8YLn/3HFTmtLLzf5wJynAfG+/a1Ie5gbn0fE0uSAHxXVsFk4Bzq8qRPWqAA=="
     },
@@ -181,6 +188,9 @@
     "three@0.181.2": {
       "integrity": "sha512-k/CjiZ80bYss6Qs7/ex1TBlPD11whT9oKfT8oTGiHa34W4JRd1NiH/Tr1DbHWQ2/vMUypxksLnF2CfmlmM5XFQ=="
     },
+    "undici-types@7.10.0": {
+      "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
+    },
     "vite@4.4.5": {
       "integrity": "sha512-4m5kEtAWHYr0O1Fu7rZp64CfO1PsRGZlD3TAB32UmQlpd7qg15VF7ROqGN5CyqN7HFuwr7ICNM2+fDWRqFEKaA==",
       "dependencies": [
@@ -195,9 +205,12 @@
     }
   },
   "redirects": {
-    "https://esm.sh/@types/three@~0.181.0/index.d.ts": "https://esm.sh/@types/three@0.181.0/index.d.ts"
+    "https://esm.sh/@types/three@~0.181.0/index.d.ts": "https://esm.sh/@types/three@0.181.0/index.d.ts",
+    "https://esm.sh/ammo.js": "https://esm.sh/ammo.js@0.0.10"
   },
   "remote": {
+    "https://esm.sh/ammo.js@0.0.10": "74f20c1d1876bdb1bb7be96434682d32d81518892d146035120719cfdacd782e",
+    "https://esm.sh/ammo.js@0.0.10/denonext/ammo.mjs": "24a10c2d0d6daa73f3465af9df7a897cd7ecf8a81dd1fd3e5ec7746bb71db42a",
     "https://esm.sh/three@0.181.2": "9864cf2077ac5fd0c7f4c86793a37fe9a62db1850d4504f4d77b1f044d7a94b9",
     "https://esm.sh/three@0.181.2/denonext/build/three.core.mjs": "513d0431e5eac1ace224aa43945efd32a5da788e9180a190d8a36e170ef1d1bd",
     "https://esm.sh/three@0.181.2/denonext/three.mjs": "4a93b562cde4975a2bd5e6347270d4704ac13e0a1ab7dc154adb8fbfea5c1f30"
