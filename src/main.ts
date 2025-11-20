@@ -1,5 +1,5 @@
-import * as THREE from "https://esm.sh/three@0.181.2";
 import AmmoLib from "https://esm.sh/ammo.js";
+import * as THREE from "https://esm.sh/three@0.181.2";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
@@ -53,6 +53,13 @@ const cubeBody = new AmmoLib.btRigidBody(rbInfo);
 physicsWorld.addRigidBody(cubeBody);
 
 console.log("Cube rigid body created");
+
+//Platform
+const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
+const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+scene.add(platform);
+platform.position.y = 1.5;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer();
