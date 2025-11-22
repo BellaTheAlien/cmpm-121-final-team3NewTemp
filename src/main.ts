@@ -65,18 +65,103 @@ const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
 );
 
 const cubeBody = new AmmoLib.btRigidBody(rbInfo);
+
+// Physics tuning
+cubeBody.setDamping(0.4, 0.4);
+cubeBody.setFriction(1);
+cubeBody.setRestitution(0);
+
 physicsWorld.addRigidBody(cubeBody);
 
 console.log("Cube rigid body created");
+
+// Platform physics body
+const platformShape = new AmmoLib.btBoxShape(
+  new AmmoLib.btVector3(5, 0.25, 5),
+);
+
+const platformTransform = new AmmoLib.btTransform();
+platformTransform.setIdentity();
+platformTransform.setOrigin(
+  new AmmoLib.btVector3(
+    platform.position.x,
+    platform.position.y,
+    platform.position.z,
+  ),
+);
+
+const platformMotion = new AmmoLib.btDefaultMotionState(platformTransform);
+const zeroInertia = new AmmoLib.btVector3(0, 0, 0);
+
+const platformRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
+  0,
+  platformMotion,
+  platformShape,
+  zeroInertia,
+);
+
+const platformBody = new AmmoLib.btRigidBody(platformRBInfo);
+
+platformBody.setFriction(1);
+platformBody.setRestitution(0);
+
+physicsWorld.addRigidBody(platformBody);
 
 // Renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Player Input
+const keys: Record<string, boolean> = {
+  w: false,
+  a: false,
+  s: false,
+  d: false,
+  " ": false,
+  space: false,
+};
+
+globalThis.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  if (keys[key] !== undefined) keys[key] = true;
+});
+
+globalThis.addEventListener("keyup", (e) => {
+  const key = e.key.toLowerCase();
+  if (keys[key] !== undefined) keys[key] = false;
+});
+
+// Grounded check
+function isGrounded(): boolean {
+  const cubeBottom = cube.position.y - 0.5;
+  const platformTop = platform.position.y + 0.25;
+  return cubeBottom <= platformTop + 0.05;
+}
+
+// Apply force helper
+function applyForce(fx: number, fy: number, fz: number) {
+  cubeBody.applyCentralForce(new AmmoLib.btVector3(fx, fy, fz));
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  // Player movement forces
+  const moveForce = 15;
+  const jumpForce = 600;
+
+  if (keys.w) applyForce(0, 0, -moveForce);
+  if (keys.s) applyForce(0, 0, moveForce);
+  if (keys.a) applyForce(-moveForce, 0, 0);
+  if (keys.d) applyForce(moveForce, 0, 0);
+
+  // Spacebar jump
+  if ((keys[" "] || keys.space) && isGrounded()) {
+    cubeBody.activate();
+    applyForce(0, jumpForce, 0);
+  }
 
   physicsWorld.stepSimulation(1 / 60, 10);
 
@@ -100,20 +185,7 @@ function animate() {
 
   cube.rotation.x += 0.01;
   cube.rotation.y += 0.01;
-
-  // Collision Detection
-  const platformTop = platform.position.y + 0.5;
-  if (cube.position.y - 1 <= platformTop) {
-    cube.position.y = platformTop + 1;
-    console.log("Cube collided with platform");
-  }
-
   renderer.render(scene, camera);
 }
 
 animate();
-
-const hello = document.createElement("h1");
-hello.id = "test";
-hello.textContent = "Hello World!";
-document.body.append(hello);
