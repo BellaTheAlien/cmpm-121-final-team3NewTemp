@@ -3,6 +3,12 @@
 # Pre-commit hook for CMPM 121 project
 # This hook runs formatting checks, linting, and type checking before each commit
 
+# These checks are taken from Demo 1 project provided by Adam Smith
+
+# the build size check was suggested by 
+# Brace when asked to improve the pre-commit hook with three.js and ammo.js added in
+# then auto complited with copilot
+
 echo "🔍 Running pre-commit checks..."
 
 # Check if Deno is available
@@ -42,6 +48,13 @@ if ! deno task build; then
     echo "❌ Build failed"
     echo "Please fix build errors before committing"
     exit 1
+fi
+
+# checking the build size, warning for large assets
+echo "📦 Checking build size..."
+if ! deno task build:size; then
+    echo "⚠️ Build size check warning"
+    echo "Consider optimizing large assets before committing"
 fi
 
 echo "✅ All pre-commit checks passed!"
