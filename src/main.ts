@@ -1,10 +1,11 @@
 import AmmoLib from "https://esm.sh/ammo.js";
 import * as THREE from "https://esm.sh/three@0.181.2";
+import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
 
-// Physics world setup
+// Physics World Set Up
 const collisionConfig = new AmmoLib.btDefaultCollisionConfiguration();
 const dispatcher = new AmmoLib.btCollisionDispatcher(collisionConfig);
 const broadphase = new AmmoLib.btDbvtBroadphase();
@@ -20,15 +21,71 @@ const physicsWorld = new AmmoLib.btDiscreteDynamicsWorld(
 physicsWorld.setGravity(new AmmoLib.btVector3(0, -9.81, 0));
 console.log("Physics world initialized");
 
-// Create a simple scene
+// Simple Scene Set Up
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(1 * 202020); // Scene Background Color
-const camera = new THREE.PerspectiveCamera( // Just Testing Camera Settings
-  75,
+scene.background = new THREE.Color(0x202020); // Scene Background Color
+const camera = new THREE.PerspectiveCamera( // Camera Settings
+  95,
   globalThis.innerWidth / globalThis.innerHeight,
   0.1,
   1000,
 );
+
+// Camera Position
+camera.position.z = 10;
+camera.position.y = 5;
+
+// GLTF Loader
+const loader = new GLTFLoader();
+let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
+let templeBody = null;
+
+////////////////////////////////
+// Light Settings
+///////////////////////////////
+
+// Main directional light
+const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+mainLight.position.set(10, 15, 10);
+mainLight.castShadow = true;
+scene.add(mainLight);
+
+// Fill light
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+fillLight.position.set(-5, 5, -5);
+scene.add(fillLight);
+
+// Soft Light
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+////////////////////////////////
+// Models
+///////////////////////////////
+
+// Load the temple model
+loader.load(
+  "./models/temple/scene.gltf",
+  function (gltf) {
+    templeModel = gltf.scene;
+    templeModel.scale.set(5, 5, 5);
+    templeModel.position.set(0, 0, 0);
+
+    scene.add(templeModel);
+    console.log("Temple model loaded successfully");
+    createTemplePhysicsBody();
+  },
+  function (xhr) {
+    console.log((xhr.loaded / xhr.total * 100) + "% loaded");
+  },
+  function (error) {
+    console.error("Error loading temple model:", error);
+  },
+);
+
+////////////////////////////////
+// 3D Objects
+///////////////////////////////
 
 // Cube
 const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -36,21 +93,19 @@ const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
 
-//Platform
+// Platform
 const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
 const platform = new THREE.Mesh(platformGeometry, platformMaterial);
 scene.add(platform);
 platform.position.y = -2.5;
 
-camera.position.z = 5;
-
 // Create Ammo rigid body for the cube
 const shape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(0.5, 0.5, 0.5));
 
 const transform = new AmmoLib.btTransform();
 transform.setIdentity();
-transform.setOrigin(new AmmoLib.btVector3(0, 5, 0)); // Start above ground
+transform.setOrigin(new AmmoLib.btVector3(0, 3, 2));
 
 const motionState = new AmmoLib.btDefaultMotionState(transform);
 
@@ -107,13 +162,36 @@ platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
 
+// Physics body for the temple
+function createTemplePhysicsBody() {
+  if (!templeModel) return;
+  const templeShape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(5, 1, 5));
+
+  const transform = new AmmoLib.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new AmmoLib.btVector3(0, 0, 0));
+
+  const motionState = new AmmoLib.btDefaultMotionState(transform);
+  const localInertia = new AmmoLib.btVector3(0, 0, 0);
+
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    0,
+    motionState,
+    templeShape,
+    localInertia,
+  );
+
+  templeBody = new AmmoLib.btRigidBody(rbInfo);
+  physicsWorld.addRigidBody(templeBody);
+}
+
 // Renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Player Input
-const keys: Record<string, boolean> = {
+const keys = {
   w: false,
   a: false,
   s: false,
