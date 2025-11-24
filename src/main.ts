@@ -201,12 +201,12 @@ const keys = {
 };
 
 globalThis.addEventListener("keydown", (e) => {
-  const key = e.key.toLowerCase();
+  const key = e.key.toLowerCase() as keyof typeof keys;
   if (keys[key] !== undefined) keys[key] = true;
 });
 
 globalThis.addEventListener("keyup", (e) => {
-  const key = e.key.toLowerCase();
+  const key = e.key.toLowerCase() as keyof typeof keys;
   if (keys[key] !== undefined) keys[key] = false;
 });
 
