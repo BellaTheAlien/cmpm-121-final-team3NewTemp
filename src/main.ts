@@ -1,6 +1,8 @@
 import AmmoLib from "https://esm.sh/ammo.js";
 import * as THREE from "https://esm.sh/three@0.181.2";
 import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
+// our moubel is taken from a url import - follow this pattern for all future models
+import temple from "../models/temple/scene.gltf?url";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
@@ -63,25 +65,56 @@ scene.add(ambientLight);
 // Models
 ///////////////////////////////
 
-// Load the temple model
-loader.load(
-  "./models/temple/scene.gltf",
-  function (gltf) {
-    templeModel = gltf.scene;
-    templeModel.scale.set(5, 5, 5);
-    templeModel.position.set(0, 0, 0);
+// asked copilot to unstand how to load the temple model
+// beccause it can be imported as a URL string, ArrayBuffer, or JSON module
 
-    scene.add(templeModel);
-    console.log("Temple model loaded successfully");
-    createTemplePhysicsBody();
-  },
-  function (xhr) {
-    console.log((xhr.loaded / xhr.total * 100) + "% loaded");
-  },
-  function (error) {
-    console.error("Error loading temple model:", error);
-  },
-);
+// Load the temple model (supports imported URL, ArrayBuffer, or JSON module)
+function onTempleLoaded(gltf: unknown) {
+  const parsed = gltf as { scene: THREE.Object3D };
+  const model = parsed.scene;
+  templeModel = model;
+  model.scale.set(5, 5, 5);
+  model.position.set(0, 0, 0);
+
+  scene.add(model);
+  console.log("Temple model loaded successfully");
+  createTemplePhysicsBody();
+}
+
+function onTempleError(error: unknown) {
+  console.error("Error loading temple model:", error);
+}
+
+function onTempleProgress(xhr: unknown) {
+  const p = xhr as { loaded?: number; total?: number } | null;
+  if (p && typeof p.loaded === "number" && typeof p.total === "number") {
+    console.log((p.loaded / p.total * 100) + "% loaded");
+  }
+}
+
+// If `temple` is a URL string, use loader.load.
+// If it's an ArrayBuffer (e.g., imported .glb), use loader.parse.
+// If it's a JSON object (imported .gltf as module), stringify and parse.
+if (typeof temple === "string") {
+  loader.load(temple, onTempleLoaded, onTempleProgress, onTempleError);
+} else if (temple instanceof ArrayBuffer) {
+  // For binary GLB data, parse without a resource path (embedded resources).
+  loader.parse(temple, "", onTempleLoaded, onTempleError);
+} else {
+  try {
+    // Use the directory of the original glTF file as the resource base path so
+    // external buffers/textures referenced by the .gltf are resolved correctly
+    // in the Vite dev server (e.g. "/project/models/temple/").
+    const basePath = new URL("../models/temple/", import.meta.url).href;
+    const json = typeof temple === "object"
+      ? JSON.stringify(temple)
+      : String(temple);
+    loader.parse(json, basePath, onTempleLoaded, onTempleError);
+  } catch (e) {
+    console.error("Failed to parse imported temple asset:", e);
+    onTempleError(e);
+  }
+}
 
 ////////////////////////////////
 // 3D Objects
