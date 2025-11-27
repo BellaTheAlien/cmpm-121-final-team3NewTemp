@@ -2,7 +2,7 @@ import AmmoLib from "https://esm.sh/ammo.js";
 import * as THREE from "https://esm.sh/three@0.181.2";
 import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
 // our moubel is taken from a url import - follow this pattern for all future models
-import temple from "../models/temple/scene.gltf?url";
+import temple from "./models/temple/scene.gltf?url";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
@@ -92,9 +92,11 @@ function onTempleProgress(xhr: unknown) {
   }
 }
 
+loader.load(temple, onTempleLoaded, onTempleProgress, onTempleError);
 // If `temple` is a URL string, use loader.load.
 // If it's an ArrayBuffer (e.g., imported .glb), use loader.parse.
 // If it's a JSON object (imported .gltf as module), stringify and parse.
+/*
 if (typeof temple === "string") {
   loader.load(temple, onTempleLoaded, onTempleProgress, onTempleError);
 } else if (temple instanceof ArrayBuffer) {
@@ -115,6 +117,7 @@ if (typeof temple === "string") {
     onTempleError(e);
   }
 }
+  */
 
 ////////////////////////////////
 // 3D Objects
