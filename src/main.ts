@@ -1,5 +1,6 @@
 import AmmoLib from "https://esm.sh/ammo.js";
 import * as THREE from "https://esm.sh/three@0.181.2";
+import { PointerLockControls } from "https://esm.sh/three@0.181.2/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
 // our moubel is taken from a url import - follow this pattern for all future models
 import temple from "./models/temple/scene.gltf?url";
@@ -34,8 +35,7 @@ const camera = new THREE.PerspectiveCamera( // Camera Settings
 );
 
 // Camera Position
-camera.position.z = 10;
-camera.position.y = 5;
+camera.position.set(0, 1.5, 3);
 
 // GLTF Loader
 const loader = new GLTFLoader();
@@ -129,6 +129,19 @@ const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
 
+// Attach camera to player
+const cameraRig = new THREE.Group();
+scene.add(cameraRig);
+cameraRig.add(camera);
+
+// Mouse controls
+const controls = new PointerLockControls(camera, document.body);
+document.addEventListener("click", () => {
+  if (!controls.isLocked) {
+    controls.lock();
+  }
+});
+
 // Platform
 const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
@@ -158,8 +171,8 @@ const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
 const cubeBody = new AmmoLib.btRigidBody(rbInfo);
 
 // Physics tuning
-cubeBody.setDamping(0.4, 0.4);
-cubeBody.setFriction(1);
+cubeBody.setDamping(0.95, 0.95);
+cubeBody.setFriction(15);
 cubeBody.setRestitution(0);
 
 physicsWorld.addRigidBody(cubeBody);
@@ -193,7 +206,7 @@ const platformRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
 
 const platformBody = new AmmoLib.btRigidBody(platformRBInfo);
 
-platformBody.setFriction(1);
+platformBody.setFriction(15);
 platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
@@ -254,27 +267,61 @@ function isGrounded(): boolean {
 }
 
 // Apply force helper
-function applyForce(fx: number, fy: number, fz: number) {
-  cubeBody.applyCentralForce(new AmmoLib.btVector3(fx, fy, fz));
+function applyMovementImpulse(fx: number, fy: number, fz: number) {
+  cubeBody.activate();
+  cubeBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
 }
 
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
 
-  // Player movement forces
-  const moveForce = 15;
-  const jumpForce = 600;
+  // Player movement
+  const moveForce = 1.5;
+  const jumpForce = 8;
 
-  if (keys.w) applyForce(0, 0, -moveForce);
-  if (keys.s) applyForce(0, 0, moveForce);
-  if (keys.a) applyForce(-moveForce, 0, 0);
-  if (keys.d) applyForce(moveForce, 0, 0);
+  if (controls.isLocked) {
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    direction.y = 0;
+    direction.normalize();
+    const right = new THREE.Vector3();
+    right.crossVectors(camera.up, direction).normalize();
 
-  // Spacebar jump
-  if ((keys[" "] || keys.space) && isGrounded()) {
-    cubeBody.activate();
-    applyForce(0, jumpForce, 0);
+    if (keys.w) {
+      applyMovementImpulse(
+        direction.x * moveForce,
+        0,
+        direction.z * moveForce,
+      );
+    }
+    if (keys.s) {
+      applyMovementImpulse(
+        -direction.x * moveForce,
+        0,
+        -direction.z * moveForce,
+      );
+    }
+    if (keys.a) {
+      applyMovementImpulse(
+        right.x * moveForce,
+        0,
+        right.z * moveForce,
+      );
+    }
+    if (keys.d) {
+      applyMovementImpulse(
+        -right.x * moveForce,
+        0,
+        -right.z * moveForce,
+      );
+    }
+
+    // Spacebar jump
+    if ((keys[" "]) && isGrounded()) {
+      cubeBody.activate();
+      applyMovementImpulse(0, jumpForce, 0);
+    }
   }
 
   physicsWorld.stepSimulation(1 / 60, 10);
@@ -297,9 +344,17 @@ function animate() {
     );
   }
 
+  cameraRig.position.copy(cube.position);
   cube.rotation.x += 0.01;
   cube.rotation.y += 0.01;
   renderer.render(scene, camera);
 }
 
 animate();
+
+// Handle window resize
+globalThis.addEventListener("resize", () => {
+  camera.aspect = globalThis.innerWidth / globalThis.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
+});
