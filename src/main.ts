@@ -40,14 +40,14 @@ camera.position.set(0, 1.5, 3);
 // GLTF Loader
 const loader = new GLTFLoader();
 loader.load(
-  "/models/temple/scene.gltf",
+  "/assets/temple/scene.gltf",
   (gltf) => {
     scene.add(gltf.scene);
-    console.log(" ⭐ The temple model was loaded"); // Added a emoji so its more visible in the console
+    console.log(" ⭐⭐ The temple model was loaded"); // Added a emoji so its more visible in the console
   },
   undefined,
   (error) => {
-    console.error("⭐ The temple model failed:", error); // Added a emoji so its more visible in the console
+    console.error("⭐⭐ The temple model failed:", error); // Added a emoji so its more visible in the console
   },
 );
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
