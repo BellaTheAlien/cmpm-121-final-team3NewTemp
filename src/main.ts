@@ -34,14 +34,16 @@ const camera = new THREE.PerspectiveCamera( // Camera Settings
 );
 
 // Camera Position
-camera.position.set(0, 1.5, 10);
+camera.position.set(0, 1.5, 0); // (0, 1.5, 3)
 
 // GLTF Loader
 const loader = new GLTFLoader();
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
 let aztecTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
-let templeBody: null = null;
-let aztecTempleBody: null = null;
+let forgottenTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
+let templeBody: any = null;
+let aztecTempleBody: any = null;
+let forgottenTempleBody: any = null;
 
 ////////////////////////////////
 // Light Settings
@@ -69,13 +71,16 @@ scene.add(ambientLight);
 // Load the first temple model
 function onTempleLoaded(gltf: { scene: THREE.Object3D }) {
   const model = gltf.scene;
+  const axis = new THREE.Vector3(0, 1, 0);
+  const angle = THREE.MathUtils.degToRad(0);
   templeModel = model;
   model.scale.set(5, 5, 5);
   model.position.set(-15, 0, 0);
+  model.rotateOnWorldAxis(axis, angle);
 
   scene.add(model);
   console.log("First temple model loaded successfully");
-  createTemplePhysicsBody(templeModel, templeBody, -15, 0, 0);
+  createExactMeshPhysicsBody(templeModel, templeBody, -15, 0, 0, 5);
 }
 
 function onTempleError(error: unknown) {
@@ -93,14 +98,15 @@ function onTempleProgress(xhr: { loaded: number; total: number }) {
 function onAztecTempleLoaded(gltf: { scene: THREE.Object3D }) {
   const model = gltf.scene;
   const axis = new THREE.Vector3(0, 1, 0);
+  const angle = THREE.MathUtils.degToRad(270);
   aztecTempleModel = model;
   model.scale.set(0.01, 0.01, 0.01);
   model.position.set(5, 0, 0);
-  model.rotateOnWorldAxis(axis, -1.9);
+  model.rotateOnWorldAxis(axis, angle);
 
   scene.add(model);
   console.log("Aztec temple model loaded successfully");
-  createTemplePhysicsBody(aztecTempleModel, aztecTempleBody, 5, 0, 0);
+  createExactMeshPhysicsBody(aztecTempleModel, aztecTempleBody, 5, 0, 0, 0.01);
 }
 
 function onAztecTempleError(error: unknown) {
@@ -111,6 +117,39 @@ function onAztecTempleProgress(xhr: { loaded: number; total: number }) {
   if (xhr.total > 0) {
     const percent = xhr.loaded / xhr.total * 100;
     console.log(`Loading Aztec temple: ${percent.toFixed(1)}%`);
+  }
+}
+
+// Load the Forgotten temple model
+function onForgottenTempleLoaded(gltf: { scene: THREE.Object3D }) {
+  const model = gltf.scene;
+  const axis = new THREE.Vector3(0, 1, 0);
+  const angle = THREE.MathUtils.degToRad(270);
+  forgottenTempleModel = model;
+  model.scale.set(0.0045, 0.0045, 0.0045);
+  model.position.set(-1, 0, 10);
+  model.rotateOnWorldAxis(axis, angle);
+
+  scene.add(model);
+  console.log("Forgotten temple model loaded successfully");
+  createExactMeshPhysicsBody(
+    forgottenTempleModel,
+    forgottenTempleBody,
+    -1,
+    0,
+    10,
+    0.0045,
+  );
+}
+
+function onForgottenTempleError(error: unknown) {
+  console.error("Error loading Forgotten temple model:", error);
+}
+
+function onForgottenTempleProgress(xhr: { loaded: number; total: number }) {
+  if (xhr.total > 0) {
+    const percent = xhr.loaded / xhr.total * 100;
+    console.log(`Loading Forgotten temple: ${percent.toFixed(1)}%`);
   }
 }
 
@@ -127,6 +166,13 @@ loader.load(
   onAztecTempleLoaded,
   onAztecTempleProgress,
   onAztecTempleError,
+);
+
+loader.load(
+  "models/forgotten_temple/scene.gltf",
+  onForgottenTempleLoaded,
+  onForgottenTempleProgress,
+  onForgottenTempleError,
 );
 
 ////////////////////////////////
@@ -153,7 +199,7 @@ document.addEventListener("click", () => {
 });
 
 // Platform
-const platformGeometry = new THREE.BoxGeometry(50, 0.5, 30);
+const platformGeometry = new THREE.BoxGeometry(70, 0.5, 70);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
 const platform = new THREE.Mesh(platformGeometry, platformMaterial);
 scene.add(platform);
@@ -184,14 +230,12 @@ const cubeBody = new AmmoLib.btRigidBody(rbInfo);
 cubeBody.setDamping(0.95, 0.95);
 cubeBody.setFriction(20);
 cubeBody.setRestitution(0);
-
 physicsWorld.addRigidBody(cubeBody);
-
 console.log("Cube rigid body created");
 
 // Platform physics body
 const platformShape = new AmmoLib.btBoxShape(
-  new AmmoLib.btVector3(25, 0.25, 15),
+  new AmmoLib.btVector3(35, 0.25, 35),
 );
 
 const platformTransform = new AmmoLib.btTransform();
@@ -221,16 +265,95 @@ platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
 
-// Physics body function for temples
-function createTemplePhysicsBody(
+// Create exact mesh physics body with triangle mesh
+function createExactMeshPhysicsBody(
   model: THREE.Object3D | null,
   _bodyRef: any,
   x: number,
   y: number,
   z: number,
+  scale: number,
 ) {
   if (!model) return;
-  const templeShape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(5, 1, 5));
+
+  const allVertices: number[] = [];
+  const allIndices: number[] = [];
+
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const mesh = child as THREE.Mesh;
+      const geometry = mesh.geometry;
+
+      const positionAttribute = geometry.getAttribute("position");
+      const vertexOffset = allVertices.length / 3;
+      const worldMatrix = mesh.matrixWorld;
+      const tempVertex = new THREE.Vector3();
+
+      for (let i = 0; i < positionAttribute.count; i++) {
+        tempVertex.fromBufferAttribute(positionAttribute, i);
+        tempVertex.applyMatrix4(worldMatrix);
+        tempVertex.multiplyScalar(scale);
+
+        allVertices.push(tempVertex.x, tempVertex.y, tempVertex.z);
+      }
+
+      if (geometry.index) {
+        const indices = geometry.index.array;
+        for (let i = 0; i < indices.length; i++) {
+          allIndices.push(indices[i] + vertexOffset);
+        }
+      } else {
+        for (let i = 0; i < positionAttribute.count; i += 3) {
+          allIndices.push(
+            vertexOffset + i,
+            vertexOffset + i + 1,
+            vertexOffset + i + 2,
+          );
+        }
+      }
+    }
+  });
+
+  if (allVertices.length === 0) {
+    console.warn("No vertices found for mesh physics body");
+    return;
+  }
+
+  // Create Ammo triangle mesh
+  const triangleMesh = new AmmoLib.btTriangleMesh();
+
+  for (let i = 0; i < allIndices.length; i += 3) {
+    const i0 = allIndices[i] * 3;
+    const i1 = allIndices[i + 1] * 3;
+    const i2 = allIndices[i + 2] * 3;
+
+    const v0 = new AmmoLib.btVector3(
+      allVertices[i0],
+      allVertices[i0 + 1],
+      allVertices[i0 + 2],
+    );
+    const v1 = new AmmoLib.btVector3(
+      allVertices[i1],
+      allVertices[i1 + 1],
+      allVertices[i1 + 2],
+    );
+    const v2 = new AmmoLib.btVector3(
+      allVertices[i2],
+      allVertices[i2 + 1],
+      allVertices[i2 + 2],
+    );
+
+    triangleMesh.addTriangle(v0, v1, v2, true);
+
+    AmmoLib.destroy(v0);
+    AmmoLib.destroy(v1);
+    AmmoLib.destroy(v2);
+  }
+
+  const useBvh = true;
+  const shape = useBvh
+    ? new AmmoLib.btBvhTriangleMeshShape(triangleMesh, true, true)
+    : new AmmoLib.btConvexTriangleMeshShape(triangleMesh, true);
 
   const transform = new AmmoLib.btTransform();
   transform.setIdentity();
@@ -242,18 +365,29 @@ function createTemplePhysicsBody(
   const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
     0,
     motionState,
-    templeShape,
+    shape,
     localInertia,
   );
 
   const body = new AmmoLib.btRigidBody(rbInfo);
+  body.setFriction(20);
+  body.setRestitution(0);
+
   physicsWorld.addRigidBody(body);
 
   if (model === templeModel) {
     templeBody = body;
   } else if (model === aztecTempleModel) {
     aztecTempleBody = body;
+  } else if (model === forgottenTempleModel) {
+    forgottenTempleBody = body;
   }
+
+  console.log(
+    `Created exact mesh physics body with ${
+      allVertices.length / 3
+    } vertices and ${allIndices.length / 3} triangles`,
+  );
 }
 
 // Renderer
