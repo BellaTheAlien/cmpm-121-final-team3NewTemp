@@ -43,11 +43,11 @@ loader.load(
   "/models/temple/scene.gltf",
   (gltf) => {
     scene.add(gltf.scene);
-    console.log("Model loaded!");
+    console.log(" ⭐ The temple model was loaded"); // Added a emoji so its more visible in the console
   },
   undefined,
   (error) => {
-    console.error("Model failed:", error);
+    console.error("⭐ The temple model failed:", error); // Added a emoji so its more visible in the console
   },
 );
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
