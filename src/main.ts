@@ -76,23 +76,23 @@ function onTempleLoaded(gltf: { scene: THREE.Object3D }) {
   model.position.set(0, 0, 0);
 
   scene.add(model);
-  console.log("🐟Temple model loaded successfully");
+  console.log("🐟🐟Temple model loaded successfully");
   createTemplePhysicsBody();
 }
 
 function onTempleError(error: unknown) {
-  console.error("🐟Error loading temple model:", error);
+  console.error("🐟🐟Error loading temple model:", error);
 }
 
 function onTempleProgress(xhr: { loaded: number; total: number }) {
   if (xhr.total > 0) {
     const percent = xhr.loaded / xhr.total * 100;
-    console.log(`🐟Loading temple: ${percent.toFixed(1)}%`);
+    console.log(`🐟🐟Loading temple: ${percent.toFixed(1)}%`);
   }
 }
 
 loader.load(
-  "/models/temple/scene.gltf",
+  "models/temple/scene.gltf",
   onTempleLoaded,
   onTempleProgress,
   onTempleError,
