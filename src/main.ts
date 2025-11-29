@@ -1,9 +1,8 @@
+// deno-lint-ignore-file no-explicit-any
 import AmmoLib from "https://esm.sh/ammo.js";
 import * as THREE from "https://esm.sh/three@0.181.2";
 import { PointerLockControls } from "https://esm.sh/three@0.181.2/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
-// our moubel is taken from a url import - follow this pattern for all future models
-//import temple from "./models/temple/scene.gltf?url";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
@@ -35,12 +34,14 @@ const camera = new THREE.PerspectiveCamera( // Camera Settings
 );
 
 // Camera Position
-camera.position.set(0, 1.5, 3);
+camera.position.set(0, 1.5, 10);
 
 // GLTF Loader
 const loader = new GLTFLoader();
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
-let templeBody = null;
+let aztecTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
+let templeBody: null = null;
+let aztecTempleBody: null = null;
 
 ////////////////////////////////
 // Light Settings
@@ -65,63 +66,68 @@ scene.add(ambientLight);
 // Models
 ///////////////////////////////
 
-// asked copilot to unstand how to load the temple model
-// beccause it can be imported as a URL string, ArrayBuffer, or JSON module
-
-// Load the temple model
+// Load the first temple model
 function onTempleLoaded(gltf: { scene: THREE.Object3D }) {
   const model = gltf.scene;
   templeModel = model;
   model.scale.set(5, 5, 5);
-  model.position.set(0, 0, 0);
+  model.position.set(-15, 0, 0);
 
   scene.add(model);
-  console.log("🐟🐟Temple model loaded successfully");
-  createTemplePhysicsBody();
+  console.log("First temple model loaded successfully");
+  createTemplePhysicsBody(templeModel, templeBody, -15, 0, 0);
 }
 
 function onTempleError(error: unknown) {
-  console.error("🐟🐟Error loading temple model:", error);
+  console.error("Error loading first temple model:", error);
 }
 
 function onTempleProgress(xhr: { loaded: number; total: number }) {
   if (xhr.total > 0) {
     const percent = xhr.loaded / xhr.total * 100;
-    console.log(`🐟🐟Loading temple: ${percent.toFixed(1)}%`);
+    console.log(`Loading first temple: ${percent.toFixed(1)}%`);
   }
 }
 
+// Load the Aztec temple model
+function onAztecTempleLoaded(gltf: { scene: THREE.Object3D }) {
+  const model = gltf.scene;
+  const axis = new THREE.Vector3(0, 1, 0);
+  aztecTempleModel = model;
+  model.scale.set(0.01, 0.01, 0.01);
+  model.position.set(5, 0, 0);
+  model.rotateOnWorldAxis(axis, -1.9);
+
+  scene.add(model);
+  console.log("Aztec temple model loaded successfully");
+  createTemplePhysicsBody(aztecTempleModel, aztecTempleBody, 5, 0, 0);
+}
+
+function onAztecTempleError(error: unknown) {
+  console.error("Error loading Aztec temple model:", error);
+}
+
+function onAztecTempleProgress(xhr: { loaded: number; total: number }) {
+  if (xhr.total > 0) {
+    const percent = xhr.loaded / xhr.total * 100;
+    console.log(`Loading Aztec temple: ${percent.toFixed(1)}%`);
+  }
+}
+
+// Load temples
 loader.load(
   "models/temple/scene.gltf",
   onTempleLoaded,
   onTempleProgress,
   onTempleError,
 );
-// If `temple` is a URL string, use loader.load.
-// If it's an ArrayBuffer (e.g., imported .glb), use loader.parse.
-// If it's a JSON object (imported .gltf as module), stringify and parse.
-/*
-if (typeof temple === "string") {
-  loader.load(temple, onTempleLoaded, onTempleProgress, onTempleError);
-} else if (temple instanceof ArrayBuffer) {
-  // For binary GLB data, parse without a resource path (embedded resources).
-  loader.parse(temple, "", onTempleLoaded, onTempleError);
-} else {
-  try {
-    // Use the directory of the original glTF file as the resource base path so
-    // external buffers/textures referenced by the .gltf are resolved correctly
-    // in the Vite dev server (e.g. "/project/models/temple/").
-    const basePath = new URL("../models/temple/", import.meta.url).href;
-    const json = typeof temple === "object"
-      ? JSON.stringify(temple)
-      : String(temple);
-    loader.parse(json, basePath, onTempleLoaded, onTempleError);
-  } catch (e) {
-    console.error("Failed to parse imported temple asset:", e);
-    onTempleError(e);
-  }
-}
-  */
+
+loader.load(
+  "models/aztec_temple/scene.gltf",
+  onAztecTempleLoaded,
+  onAztecTempleProgress,
+  onAztecTempleError,
+);
 
 ////////////////////////////////
 // 3D Objects
@@ -147,11 +153,11 @@ document.addEventListener("click", () => {
 });
 
 // Platform
-const platformGeometry = new THREE.BoxGeometry(10, 0.5, 10);
+const platformGeometry = new THREE.BoxGeometry(50, 0.5, 30);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
 const platform = new THREE.Mesh(platformGeometry, platformMaterial);
 scene.add(platform);
-platform.position.y = -2.5;
+platform.position.y = -.5;
 
 // Create Ammo rigid body for the cube
 const shape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(0.5, 0.5, 0.5));
@@ -185,7 +191,7 @@ console.log("Cube rigid body created");
 
 // Platform physics body
 const platformShape = new AmmoLib.btBoxShape(
-  new AmmoLib.btVector3(5, 0.25, 5),
+  new AmmoLib.btVector3(25, 0.25, 15),
 );
 
 const platformTransform = new AmmoLib.btTransform();
@@ -215,14 +221,20 @@ platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
 
-// Physics body for the temple
-function createTemplePhysicsBody() {
-  if (!templeModel) return;
+// Physics body function for temples
+function createTemplePhysicsBody(
+  model: THREE.Object3D | null,
+  _bodyRef: any,
+  x: number,
+  y: number,
+  z: number,
+) {
+  if (!model) return;
   const templeShape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(5, 1, 5));
 
   const transform = new AmmoLib.btTransform();
   transform.setIdentity();
-  transform.setOrigin(new AmmoLib.btVector3(0, 0, 0));
+  transform.setOrigin(new AmmoLib.btVector3(x, y, z));
 
   const motionState = new AmmoLib.btDefaultMotionState(transform);
   const localInertia = new AmmoLib.btVector3(0, 0, 0);
@@ -234,8 +246,14 @@ function createTemplePhysicsBody() {
     localInertia,
   );
 
-  templeBody = new AmmoLib.btRigidBody(rbInfo);
-  physicsWorld.addRigidBody(templeBody);
+  const body = new AmmoLib.btRigidBody(rbInfo);
+  physicsWorld.addRigidBody(body);
+
+  if (model === templeModel) {
+    templeBody = body;
+  } else if (model === aztecTempleModel) {
+    aztecTempleBody = body;
+  }
 }
 
 // Renderer
