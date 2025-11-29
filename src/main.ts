@@ -3,7 +3,7 @@ import * as THREE from "https://esm.sh/three@0.181.2";
 import { PointerLockControls } from "https://esm.sh/three@0.181.2/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "https://esm.sh/three@0.181.2/examples/jsm/loaders/GLTFLoader.js";
 // our moubel is taken from a url import - follow this pattern for all future models
-import temple from "./models/temple/scene.gltf?url";
+//import temple from "./models/temple/scene.gltf?url";
 
 // Ammo.js module is already initialized by esm.sh
 console.log("Ammo.js Loaded!", AmmoLib);
@@ -39,17 +39,6 @@ camera.position.set(0, 1.5, 3);
 
 // GLTF Loader
 const loader = new GLTFLoader();
-loader.load(
-  "/assets/temple/scene.gltf",
-  (gltf) => {
-    scene.add(gltf.scene);
-    console.log(" ⭐⭐ The temple model was loaded"); // Added a emoji so its more visible in the console
-  },
-  undefined,
-  (error) => {
-    console.error("⭐⭐ The temple model failed:", error); // Added a emoji so its more visible in the console
-  },
-);
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
 let templeBody = null;
 
@@ -79,34 +68,35 @@ scene.add(ambientLight);
 // asked copilot to unstand how to load the temple model
 // beccause it can be imported as a URL string, ArrayBuffer, or JSON module
 
-// Load the temple model (supports imported URL, ArrayBuffer, or JSON module)
-function onTempleLoaded(gltf: unknown) {
-  const parsed = gltf as { scene: THREE.Object3D };
-  const model = parsed.scene;
+// Load the temple model
+function onTempleLoaded(gltf: { scene: THREE.Object3D }) {
+  const model = gltf.scene;
   templeModel = model;
   model.scale.set(5, 5, 5);
   model.position.set(0, 0, 0);
 
   scene.add(model);
-  console.log("Temple model loaded successfully");
+  console.log("🐟Temple model loaded successfully");
   createTemplePhysicsBody();
 }
 
 function onTempleError(error: unknown) {
-  console.error("Error loading temple model:", error);
+  console.error("🐟Error loading temple model:", error);
 }
 
-function onTempleProgress(xhr: unknown) {
-  const p = xhr as { loaded?: number; total?: number } | null;
-  if (p && typeof p.loaded === "number" && typeof p.total === "number") {
-    const percent = p.loaded / p.total * 100;
-    console.log(`Temple model: ${percent.toFixed(2)}% loaded`);
-  } else {
-    console.log("Loading temple model...");
+function onTempleProgress(xhr: { loaded: number; total: number }) {
+  if (xhr.total > 0) {
+    const percent = xhr.loaded / xhr.total * 100;
+    console.log(`🐟Loading temple: ${percent.toFixed(1)}%`);
   }
 }
 
-loader.load(temple, onTempleLoaded, onTempleProgress, onTempleError);
+loader.load(
+  "/models/temple/scene.gltf",
+  onTempleLoaded,
+  onTempleProgress,
+  onTempleError,
+);
 // If `temple` is a URL string, use loader.load.
 // If it's an ArrayBuffer (e.g., imported .glb), use loader.parse.
 // If it's a JSON object (imported .gltf as module), stringify and parse.
