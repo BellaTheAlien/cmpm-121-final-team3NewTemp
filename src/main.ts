@@ -39,6 +39,17 @@ camera.position.set(0, 1.5, 3);
 
 // GLTF Loader
 const loader = new GLTFLoader();
+loader.load(
+  "/models/temple/scene.gltf",
+  (gltf) => {
+    scene.add(gltf.scene);
+    console.log("Model loaded!");
+  },
+  undefined,
+  (error) => {
+    console.error("Model failed:", error);
+  },
+);
 let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
 let templeBody = null;
 
@@ -88,7 +99,10 @@ function onTempleError(error: unknown) {
 function onTempleProgress(xhr: unknown) {
   const p = xhr as { loaded?: number; total?: number } | null;
   if (p && typeof p.loaded === "number" && typeof p.total === "number") {
-    console.log((p.loaded / p.total * 100) + "% loaded");
+    const percent = p.loaded / p.total * 100;
+    console.log(`Temple model: ${percent.toFixed(2)}% loaded`);
+  } else {
+    console.log("Loading temple model...");
   }
 }
 
@@ -172,7 +186,7 @@ const cubeBody = new AmmoLib.btRigidBody(rbInfo);
 
 // Physics tuning
 cubeBody.setDamping(0.95, 0.95);
-cubeBody.setFriction(15);
+cubeBody.setFriction(20);
 cubeBody.setRestitution(0);
 
 physicsWorld.addRigidBody(cubeBody);
@@ -206,7 +220,7 @@ const platformRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
 
 const platformBody = new AmmoLib.btRigidBody(platformRBInfo);
 
-platformBody.setFriction(15);
+platformBody.setFriction(20);
 platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
