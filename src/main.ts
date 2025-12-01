@@ -180,10 +180,10 @@ loader.load(
 ///////////////////////////////
 
 // Cube
-const geometry = new THREE.BoxGeometry(1, 1, 1);
+const geometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
+const capsule = new THREE.Mesh(geometry, material);
+scene.add(capsule);
 
 // Attach camera to player
 const cameraRig = new THREE.Group();
@@ -224,13 +224,13 @@ const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
   localInertia,
 );
 
-const cubeBody = new AmmoLib.btRigidBody(rbInfo);
+const capsuleBody = new AmmoLib.btRigidBody(rbInfo);
 
 // Physics tuning
-cubeBody.setDamping(0.95, 0.95);
-cubeBody.setFriction(20);
-cubeBody.setRestitution(0);
-physicsWorld.addRigidBody(cubeBody);
+capsuleBody.setDamping(0.95, 0.95);
+capsuleBody.setFriction(20);
+capsuleBody.setRestitution(0);
+physicsWorld.addRigidBody(capsuleBody);
 console.log("Cube rigid body created");
 
 // Platform physics body
@@ -417,15 +417,15 @@ globalThis.addEventListener("keyup", (e) => {
 
 // Grounded check
 function isGrounded(): boolean {
-  const cubeBottom = cube.position.y - 0.5;
+  const capsuleBottom = capsule.position.y - 0.5;
   const platformTop = platform.position.y + 0.25;
-  return cubeBottom <= platformTop + 0.05;
+  return capsuleBottom <= platformTop + 0.05;
 }
 
 // Apply force helper
 function applyMovementImpulse(fx: number, fy: number, fz: number) {
-  cubeBody.activate();
-  cubeBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
+  capsuleBody.activate();
+  capsuleBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
 }
 
 // Animation loop
@@ -475,7 +475,7 @@ function animate() {
 
     // Spacebar jump
     if ((keys[" "]) && isGrounded()) {
-      cubeBody.activate();
+      capsuleBody.activate();
       applyMovementImpulse(0, jumpForce, 0);
     }
   }
@@ -483,7 +483,7 @@ function animate() {
   physicsWorld.stepSimulation(1 / 60, 10);
 
   // Sync physics to Three.js
-  const ms = cubeBody.getMotionState();
+  const ms = capsuleBody.getMotionState();
   if (ms) {
     const tempTransform = new AmmoLib.btTransform();
     ms.getWorldTransform(tempTransform);
@@ -491,8 +491,8 @@ function animate() {
     const origin = tempTransform.getOrigin();
     const rotation = tempTransform.getRotation();
 
-    cube.position.set(origin.x(), origin.y(), origin.z());
-    cube.quaternion.set(
+    capsule.position.set(origin.x(), origin.y(), origin.z());
+    capsule.quaternion.set(
       rotation.x(),
       rotation.y(),
       rotation.z(),
@@ -500,9 +500,9 @@ function animate() {
     );
   }
 
-  cameraRig.position.copy(cube.position);
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
+  cameraRig.position.copy(capsule.position);
+  capsule.rotation.x += 0.01;
+  capsule.rotation.y += 0.01;
   renderer.render(scene, camera);
 }
 
