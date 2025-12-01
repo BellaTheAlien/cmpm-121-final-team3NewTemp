@@ -179,11 +179,18 @@ loader.load(
 // 3D Objects
 ///////////////////////////////
 
-// Cube
+// Capsule player
 const geometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const capsule = new THREE.Mesh(geometry, material);
 scene.add(capsule);
+
+// shpere movable object for puzzles
+const shpereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+const shpereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+const sphere = new THREE.Mesh(shpereGeo, shpereMat);
+sphere.position.set(5, 10, 0);
+scene.add(sphere);
 
 // Attach camera to player
 const cameraRig = new THREE.Group();
@@ -226,12 +233,39 @@ const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
 
 const capsuleBody = new AmmoLib.btRigidBody(rbInfo);
 
+// Sphere rigid body //
+const sphereRadius = 0.5;
+const sphereShape = new AmmoLib.btSphereShape(sphereRadius);
+
+const sphereTransform = new AmmoLib.btTransform();
+sphereTransform.setIdentity();
+sphereTransform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
+
+const sphereMotionState = new AmmoLib.btDefaultMotionState(sphereTransform);
+
+const sphereInertia = new AmmoLib.btVector3(0, 0, 0);
+sphereShape.calculateLocalInertia(1.0, sphereInertia);
+
+const sphereRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
+  1.0,
+  sphereMotionState,
+  sphereShape,
+  sphereInertia,
+);
+
+const sphereBody = new AmmoLib.btRigidBody(sphereRBInfo);
+sphereBody.setDamping(0.5, 0.5);
+sphereBody.setFriction(0.8);
+sphereBody.setRestitution(0.7);
+physicsWorld.addRigidBody(sphereBody);
+console.log("Sphere rigid body created");
+
 // Physics tuning
 capsuleBody.setDamping(0.95, 0.95);
 capsuleBody.setFriction(20);
 capsuleBody.setRestitution(0);
 physicsWorld.addRigidBody(capsuleBody);
-console.log("Cube rigid body created");
+console.log("Capsule rigid body created");
 
 // Platform physics body
 const platformShape = new AmmoLib.btBoxShape(
@@ -396,11 +430,13 @@ renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Player Input
+// WASD and spacebar for movement - e is to kick/interact
 const keys = {
   w: false,
   a: false,
   s: false,
   d: false,
+  e: false,
   " ": false,
   space: false,
 };
@@ -473,6 +509,26 @@ function animate() {
       );
     }
 
+    // Kick/Interact
+    if (keys.e && controls.isLocked) {
+      const playerPos = capsule.position;
+      const ballPos = sphere.position;
+      const distance = playerPos.distanceTo(ballPos);
+
+      if (distance < 3) {
+        const kickDirection = ballPos.clone().sub(playerPos).normalize();
+        const kickForce = 10;
+        const impulse = new AmmoLib.btVector3(
+          kickDirection.x * kickForce,
+          // to give some lift to the ball
+          kickDirection.y * kickForce + 2,
+          kickDirection.z * kickForce,
+          console.log("Kicked the sphere!"),
+        );
+        sphereBody.applyCentralImpulse(impulse);
+      }
+    }
+
     // Spacebar jump
     if ((keys[" "]) && isGrounded()) {
       capsuleBody.activate();
@@ -481,6 +537,15 @@ function animate() {
   }
 
   physicsWorld.stepSimulation(1 / 60, 10);
+
+  // shere physics to Three.js
+  const msSphere = sphereBody.getMotionState();
+  if (msSphere) {
+    const tempTransform = new AmmoLib.btTransform();
+    msSphere.getWorldTransform(tempTransform);
+    const origin = tempTransform.getOrigin();
+    sphere.position.set(origin.x(), origin.y(), origin.z());
+  }
 
   // Sync physics to Three.js
   const ms = capsuleBody.getMotionState();
