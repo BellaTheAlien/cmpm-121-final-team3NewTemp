@@ -204,7 +204,8 @@ const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
 const pillar = new THREE.Mesh(PillarGeometry, PillarMaterial);
 pillar.position.set(-5, 0, -13);
 const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
-pillar.rotateOnAxis(pillarAxis, Math.PI / 6);
+pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
+console.log(pillar.quaternion);
 scene.add(pillar);
 
 ////////////////////////////////
@@ -406,6 +407,14 @@ physicsWorld.addRigidBody(platformBody);
       pillar.position.z,
     ),
   );
+  pillarTransform.setRotation(
+    new AmmoLib.btQuaternion(
+      pillar.quaternion.x,
+      pillar.quaternion.y,
+      pillar.quaternion.z,
+      pillar.quaternion.w,
+    ),
+  );
 
   const pillarMotion = new AmmoLib.btDefaultMotionState(pillarTransform);
 
@@ -418,7 +427,7 @@ physicsWorld.addRigidBody(platformBody);
 
   const pillarBody = new AmmoLib.btRigidBody(pillarRBInfo);
 
-  pillarBody.setFriction(20);
+  pillarBody.setFriction(100);
   pillarBody.setRestitution(0);
 
   physicsWorld.addRigidBody(pillarBody);
