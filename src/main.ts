@@ -194,6 +194,10 @@ const sphere = new THREE.Mesh(shpereGeo, shpereMat);
 sphere.position.set(5, 10, 0);
 scene.add(sphere);
 
+// Left or right slope for physics puzzle
+
+// Falling sphere for physics puzzle
+
 ////////////////////////////////
 // Key, Door, and Inventory
 ///////////////////////////////
