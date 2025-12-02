@@ -198,21 +198,14 @@ scene.add(sphere);
 // Physics Puzzle
 ///////////////////////////////
 
-// Left or right slope for physics puzzle
+// On slope for physics puzzle
 const PillarGeometry = new THREE.BoxGeometry(5, 0.5, 5);
 const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
 const pillar = new THREE.Mesh(PillarGeometry, PillarMaterial);
-pillar.position.set(0, 5, -20);
-const pillarAxis = new THREE.Vector3(0, 0, 0.5).normalize();
+pillar.position.set(2, 1, -5);
+const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
 pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
 scene.add(pillar);
-
-// Falling sphere for physics puzzle
-const PillarBallGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-const PillarBallMaterial = new THREE.MeshBasicMaterial({ color: 0xB5B059 });
-const pillarBall = new THREE.Mesh(PillarBallGeometry, PillarBallMaterial);
-pillarBall.position.set(0, 7, -20);
-scene.add(pillarBall);
 
 ////////////////////////////////
 // Key, Door, and Inventory
