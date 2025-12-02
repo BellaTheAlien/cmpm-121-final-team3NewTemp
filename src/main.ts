@@ -202,9 +202,9 @@ scene.add(sphere);
 const PillarGeometry = new THREE.BoxGeometry(5, 0.5, 5);
 const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
 const pillar = new THREE.Mesh(PillarGeometry, PillarMaterial);
-pillar.position.set(2, 1, -5);
+pillar.position.set(-5, 0, -13);
 const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
-pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
+pillar.rotateOnAxis(pillarAxis, Math.PI / 6);
 scene.add(pillar);
 
 ////////////////////////////////
@@ -390,6 +390,39 @@ platformBody.setFriction(20);
 platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
+
+// Physics for puzzle platforms
+{
+  const pillarShape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(2.5, 0.25, 2.5),
+  );
+
+  const pillarTransform = new AmmoLib.btTransform();
+  pillarTransform.setIdentity();
+  pillarTransform.setOrigin(
+    new AmmoLib.btVector3(
+      pillar.position.x,
+      pillar.position.y,
+      pillar.position.z,
+    ),
+  );
+
+  const pillarMotion = new AmmoLib.btDefaultMotionState(pillarTransform);
+
+  const pillarRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    0,
+    pillarMotion,
+    pillarShape,
+    zeroInertia,
+  );
+
+  const pillarBody = new AmmoLib.btRigidBody(pillarRBInfo);
+
+  pillarBody.setFriction(20);
+  pillarBody.setRestitution(0);
+
+  physicsWorld.addRigidBody(pillarBody);
+}
 
 // Create exact mesh physics body with triangle mesh
 function createExactMeshPhysicsBody(
