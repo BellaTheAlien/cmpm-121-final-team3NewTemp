@@ -214,12 +214,10 @@ leftSlideShape.moveTo(0, 0);
 leftSlideShape.lineTo(5, 0);
 leftSlideShape.lineTo(5, 1);
 leftSlideShape.lineTo(0, 0);
-
 const leftSlideGeometry = new THREE.ExtrudeGeometry(leftSlideShape);
-
-const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
-leftSlide.position.set(-5, 0, -25);
+leftSlide.position.set(-12, 0, -23.75);
 scene.add(leftSlide);
 //Right slide for physics puzzle
 const rightSlideShape = new THREE.Shape();
@@ -227,13 +225,30 @@ rightSlideShape.moveTo(0, 0);
 rightSlideShape.lineTo(-5, 0);
 rightSlideShape.lineTo(-5, 1);
 rightSlideShape.lineTo(0, 0);
-
 const rightSlideGeometry = new THREE.ExtrudeGeometry(rightSlideShape);
-
-const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
-rightSlide.position.set(5, 0, -25);
+rightSlide.position.set(-2, 0, -23.75);
 scene.add(rightSlide);
+//Win Wall
+const winWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
+const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27F538 });
+const winWall = new THREE.Mesh(winWallGeometry, winWallMaterial);
+winWall.position.set(-12, 0, -23.5);
+scene.add(winWall);
+//Lose Wall
+const loseWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
+const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xF52727 });
+const loseWall = new THREE.Mesh(loseWallGeometry, loseWallMaterial);
+loseWall.position.set(-1.75, 0, -23.5);
+scene.add(loseWall);
+//back Wall
+const backWallGeometry = new THREE.BoxGeometry(5, 5, 1);
+const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
+backWall.position.set(-5, 0, -25);
+scene.add(backWall);
+
 ////////////////////////////////
 // Key, Door, and Inventory
 ///////////////////////////////
@@ -418,7 +433,7 @@ platformBody.setRestitution(0);
 
 physicsWorld.addRigidBody(platformBody);
 
-// Physics for puzzle platforms
+// Physics for puzzle platform slope
 {
   const pillarShape = new AmmoLib.btBoxShape(
     new AmmoLib.btVector3(2.5, 0.25, 2.5),
@@ -457,6 +472,36 @@ physicsWorld.addRigidBody(platformBody);
   pillarBody.setRestitution(0);
 
   physicsWorld.addRigidBody(pillarBody);
+}
+//Physics for puzzle back wall
+{
+  const backWallShape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(2.5, 2.5, 0.5),
+  );
+
+  const backWallTransform = new AmmoLib.btTransform();
+  backWallTransform.setIdentity();
+  backWallTransform.setOrigin(
+    new AmmoLib.btVector3(
+      backWall.position.x,
+      backWall.position.y,
+      backWall.position.z,
+    ),
+  );
+  const backWallMotion = new AmmoLib.btDefaultMotionState(backWallTransform);
+  const backWallRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    0,
+    backWallMotion,
+    backWallShape,
+    zeroInertia,
+  );
+
+  const backWallBody = new AmmoLib.btRigidBody(backWallRBInfo);
+
+  backWallBody.setFriction(100);
+  backWallBody.setRestitution(0);
+
+  physicsWorld.addRigidBody(backWallBody);
 }
 
 // Create exact mesh physics body with triangle mesh
