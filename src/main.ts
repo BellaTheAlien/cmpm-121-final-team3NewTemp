@@ -44,6 +44,8 @@ let forgottenTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
 let templeBody: any = null;
 let aztecTempleBody: any = null;
 let forgottenTempleBody: any = null;
+// Door physics body (for locking/unlocking)
+let doorBody: any = null;
 
 ////////////////////////////////
 // Light Settings
@@ -192,6 +194,83 @@ const sphere = new THREE.Mesh(shpereGeo, shpereMat);
 sphere.position.set(5, 10, 0);
 scene.add(sphere);
 
+////////////////////////////////
+// Key, Door, and Inventory
+///////////////////////////////
+
+// Simple key mesh
+const keyGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.5);
+const keyMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffff44,
+  metalness: 0.8,
+  roughness: 0.2,
+});
+const keyMesh = new THREE.Mesh(keyGeometry, keyMaterial);
+// Change this to move where the key spawns
+keyMesh.position.set(-10, 0.0, -10);
+scene.add(keyMesh);
+
+// Simple door mesh
+const doorGeometry = new THREE.BoxGeometry(2, 3, 0.2);
+const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x884422 });
+const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
+// Change this to move where the door spawns
+doorMesh.position.set(-10, 1.5, -12);
+scene.add(doorMesh);
+
+// Inventory state
+let hasTempleKey = false;
+let doorLocked = true;
+
+// Very small HUD for inventory
+const inventoryHud = document.createElement("div");
+inventoryHud.style.position = "fixed";
+inventoryHud.style.top = "10px";
+inventoryHud.style.left = "50%";
+inventoryHud.style.transform = "translateX(-50%)";
+inventoryHud.style.color = "white";
+inventoryHud.style.fontFamily = "sans-serif";
+inventoryHud.style.fontSize = "14px";
+inventoryHud.style.padding = "4px 8px";
+inventoryHud.style.background = "rgba(0, 0, 0, 0.5)";
+inventoryHud.textContent = "Inventory: (empty)";
+document.body.appendChild(inventoryHud);
+
+// Door physics body so it blocks the player when locked
+{
+  const halfWidth = 1;
+  const halfHeight = 1.5;
+  const halfDepth = 0.1;
+  const doorShape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(halfWidth, halfHeight, halfDepth),
+  );
+
+  const doorTransform = new AmmoLib.btTransform();
+  doorTransform.setIdentity();
+  doorTransform.setOrigin(
+    new AmmoLib.btVector3(
+      doorMesh.position.x,
+      doorMesh.position.y,
+      doorMesh.position.z,
+    ),
+  );
+
+  const doorMotionState = new AmmoLib.btDefaultMotionState(doorTransform);
+  const zeroDoorInertia = new AmmoLib.btVector3(0, 0, 0);
+
+  const doorRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    0,
+    doorMotionState,
+    doorShape,
+    zeroDoorInertia,
+  );
+
+  doorBody = new AmmoLib.btRigidBody(doorRBInfo);
+  doorBody.setFriction(20);
+  doorBody.setRestitution(0);
+  physicsWorld.addRigidBody(doorBody);
+}
+
 // Attach camera to player
 const cameraRig = new THREE.Group();
 scene.add(cameraRig);
@@ -210,7 +289,7 @@ const platformGeometry = new THREE.BoxGeometry(70, 0.5, 70);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
 const platform = new THREE.Mesh(platformGeometry, platformMaterial);
 scene.add(platform);
-platform.position.y = -.5;
+platform.position.y = -0.5;
 
 // Create Ammo rigid body for the cube
 const shape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(0.5, 0.5, 0.5));
@@ -464,12 +543,60 @@ function applyMovementImpulse(fx: number, fy: number, fz: number) {
   capsuleBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
 }
 
+// Interaction logic: key pickup, door unlock, or kick sphere
+function handleInteraction() {
+  const playerPos = capsule.position;
+
+  // Try pick up key
+  if (!hasTempleKey && keyMesh.visible) {
+    const keyDist = playerPos.distanceTo(keyMesh.position);
+    if (keyDist < 2) {
+      hasTempleKey = true;
+      keyMesh.visible = false;
+      inventoryHud.textContent = "Inventory: Temple Key";
+      console.log("Picked up Temple Key");
+      return;
+    }
+  }
+
+  // Try unlock door
+  if (doorLocked && hasTempleKey) {
+    const doorDist = playerPos.distanceTo(doorMesh.position);
+    if (doorDist < 3) {
+      doorLocked = false;
+      doorMesh.visible = false;
+      if (doorBody) {
+        physicsWorld.removeRigidBody(doorBody);
+      }
+      console.log("Door unlocked with Temple Key!");
+      return;
+    }
+  }
+
+  // Otherwise try kicking the sphere
+  const ballPos = sphere.position;
+  const distance = playerPos.distanceTo(ballPos);
+
+  if (distance < 3) {
+    const kickDirection = ballPos.clone().sub(playerPos).normalize();
+    const kickForce = 10;
+    const impulse = new AmmoLib.btVector3(
+      kickDirection.x * kickForce,
+      // to give some lift to the ball
+      kickDirection.y * kickForce + 2,
+      kickDirection.z * kickForce,
+    );
+    console.log("Kicked the sphere!");
+    sphereBody.applyCentralImpulse(impulse);
+  }
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
 
   // Player movement
-  const moveForce = 1.5;
+  const moveForce = 0.5;
   const jumpForce = 8;
 
   if (controls.isLocked) {
@@ -511,26 +638,13 @@ function animate() {
 
     // Kick/Interact
     if (keys.e && controls.isLocked) {
-      const playerPos = capsule.position;
-      const ballPos = sphere.position;
-      const distance = playerPos.distanceTo(ballPos);
-
-      if (distance < 3) {
-        const kickDirection = ballPos.clone().sub(playerPos).normalize();
-        const kickForce = 10;
-        const impulse = new AmmoLib.btVector3(
-          kickDirection.x * kickForce,
-          // to give some lift to the ball
-          kickDirection.y * kickForce + 2,
-          kickDirection.z * kickForce,
-          console.log("Kicked the sphere!"),
-        );
-        sphereBody.applyCentralImpulse(impulse);
-      }
+      handleInteraction();
+      // simple debounce so holding E does not spam
+      keys.e = false;
     }
 
     // Spacebar jump
-    if ((keys[" "]) && isGrounded()) {
+    if (keys[" "] && isGrounded()) {
       capsuleBody.activate();
       applyMovementImpulse(0, jumpForce, 0);
     }
@@ -572,6 +686,12 @@ function animate() {
 }
 
 animate();
+
+// Expose some objects for debugging in DevTools
+(globalThis as any).capsule = capsule;
+(globalThis as any).sphere = sphere;
+(globalThis as any).keyMesh = keyMesh;
+(globalThis as any).doorMesh = doorMesh;
 
 // Handle window resize
 globalThis.addEventListener("resize", () => {
