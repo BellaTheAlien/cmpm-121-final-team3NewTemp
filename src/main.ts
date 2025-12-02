@@ -197,7 +197,6 @@ scene.add(sphere);
 ////////////////////////////////
 // Physics Puzzle
 ///////////////////////////////
-
 // On slope for physics puzzle
 const PillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
 const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
@@ -208,16 +207,14 @@ pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
 console.log(pillar.quaternion);
 scene.add(pillar);
 
-//Group for sliding puzzle
-const slideGroup = new THREE.Group();
 //Left slide for physics puzzle
 const leftSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
 const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
 const leftSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 leftSlide.rotateOnAxis(leftSlideAxis, Math.PI / 12);
-leftSlide.position.set(-10, 0, -23.75);
-slideGroup.add(leftSlide);
+leftSlide.position.set(-8, 0, -23.25);
+scene.add(leftSlide);
 
 //Right slide for physics puzzle
 const rightSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
@@ -225,24 +222,21 @@ const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
 const rightSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 rightSlide.rotateOnAxis(rightSlideAxis, -Math.PI / 12);
-rightSlide.position.set(-3.5, 0, -23.75);
-slideGroup.add(rightSlide);
+rightSlide.position.set(-2, 0, -23.25);
+scene.add(rightSlide);
 //Win Wall
 const winWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27F538 });
 const winWall = new THREE.Mesh(winWallGeometry, winWallMaterial);
-winWall.position.set(-12, 0, -23.5);
-slideGroup.add(winWall);
+winWall.position.set(-10, 0, -23);
+scene.add(winWall);
 //Lose Wall
 const loseWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xF52727 });
 const loseWall = new THREE.Mesh(loseWallGeometry, loseWallMaterial);
-loseWall.position.set(-1.75, 0, -23.5);
-slideGroup.add(loseWall);
+loseWall.position.set(0, 0, -23);
+scene.add(loseWall);
 
-//Added all meshes of sliding puzzle into 3JS
-slideGroup.position.set(2, 0, 0.75);
-scene.add(slideGroup);
 //back Wall
 const backWallGeometry = new THREE.BoxGeometry(10, 5, 1);
 const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
@@ -514,9 +508,9 @@ physicsWorld.addRigidBody(platformBody);
   winTransform.setIdentity();
   winTransform.setOrigin(
     new AmmoLib.btVector3(
-      winWall.position.x + 2,
+      winWall.position.x,
       winWall.position.y,
-      winWall.position.z + 0.75,
+      winWall.position.z,
     ),
   );
   const winMotion = new AmmoLib.btDefaultMotionState(winTransform);
@@ -541,9 +535,9 @@ physicsWorld.addRigidBody(platformBody);
   loseTransform.setIdentity();
   loseTransform.setOrigin(
     new AmmoLib.btVector3(
-      loseWall.position.x + 2,
+      loseWall.position.x,
       loseWall.position.y,
-      loseWall.position.z + 0.75,
+      loseWall.position.z,
     ),
   );
   const loseMotion = new AmmoLib.btDefaultMotionState(loseTransform);
@@ -569,9 +563,9 @@ physicsWorld.addRigidBody(platformBody);
   leftSlideTransform.setIdentity();
   leftSlideTransform.setOrigin(
     new AmmoLib.btVector3(
-      leftSlide.position.x + 2,
+      leftSlide.position.x,
       leftSlide.position.y,
-      leftSlide.position.z + 0.75,
+      leftSlide.position.z,
     ),
   );
   leftSlideTransform.setRotation(
@@ -607,9 +601,9 @@ physicsWorld.addRigidBody(platformBody);
   rightSlideTransform.setIdentity();
   rightSlideTransform.setOrigin(
     new AmmoLib.btVector3(
-      rightSlide.position.x + 2,
+      rightSlide.position.x,
       rightSlide.position.y,
-      rightSlide.position.z + 0.75,
+      rightSlide.position.z,
     ),
   );
   rightSlideTransform.setRotation(
@@ -852,6 +846,21 @@ function handleInteraction() {
   }
 }
 
+// Check for win or loss condition
+function winLoseFunction() {
+  const ballPos = sphere.position;
+  const winWallPosEdit = winWall;
+  const distWin = winWallPosEdit.position.distanceTo(ballPos);
+  const distLose = loseWall.position.distanceTo(ballPos);
+
+  if (distWin < 1) {
+    console.log("Win Con");
+  }
+  if (distLose < 1) {
+    console.log("Lose Con");
+  }
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
@@ -910,6 +919,9 @@ function animate() {
       applyMovementImpulse(0, jumpForce, 0);
     }
   }
+
+  // Win/Lose function call
+  winLoseFunction();
 
   physicsWorld.stepSimulation(1 / 60, 10);
 
