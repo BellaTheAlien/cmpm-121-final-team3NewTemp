@@ -7,3 +7,7 @@ Inroduction to the team and planned tool usage
 ## [Devlog #2 Nov 19, 2025](https://github.com/BellaTheAlien/cmpm-121-final-team3NewTemp/blob/main/DevLog/Nov19DevLog.md)
 
 Updates to tools and progress towards F1
+
+## [Devlog #3 Dec 1, 2025](https://github.com/BellaTheAlien/cmpm-121-final-team3NewTemp/blob/main/DevLog/Dec1DevLog.md)
+
+F2 Devlog
