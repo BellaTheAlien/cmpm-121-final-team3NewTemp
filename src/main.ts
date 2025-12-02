@@ -199,15 +199,41 @@ scene.add(sphere);
 ///////////////////////////////
 
 // On slope for physics puzzle
-const PillarGeometry = new THREE.BoxGeometry(5, 0.5, 5);
+const PillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
 const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
 const pillar = new THREE.Mesh(PillarGeometry, PillarMaterial);
-pillar.position.set(-5, 0, -13);
+pillar.position.set(-5, 0, -20);
 const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
 pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
 console.log(pillar.quaternion);
 scene.add(pillar);
 
+//Left slide for physics puzzle
+const leftSlideShape = new THREE.Shape();
+leftSlideShape.moveTo(0, 0);
+leftSlideShape.lineTo(5, 0);
+leftSlideShape.lineTo(5, 1);
+leftSlideShape.lineTo(0, 0);
+
+const leftSlideGeometry = new THREE.ExtrudeGeometry(leftSlideShape);
+
+const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
+leftSlide.position.set(-5, 0, -25);
+scene.add(leftSlide);
+//Right slide for physics puzzle
+const rightSlideShape = new THREE.Shape();
+rightSlideShape.moveTo(0, 0);
+rightSlideShape.lineTo(-5, 0);
+rightSlideShape.lineTo(-5, 1);
+rightSlideShape.lineTo(0, 0);
+
+const rightSlideGeometry = new THREE.ExtrudeGeometry(rightSlideShape);
+
+const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
+rightSlide.position.set(5, 0, -25);
+scene.add(rightSlide);
 ////////////////////////////////
 // Key, Door, and Inventory
 ///////////////////////////////
