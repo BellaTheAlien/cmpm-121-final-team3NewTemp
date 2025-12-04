@@ -23,308 +23,747 @@ const physicsWorld = new AmmoLib.btDiscreteDynamicsWorld(
 physicsWorld.setGravity(new AmmoLib.btVector3(0, -9.81, 0));
 console.log("Physics world initialized");
 
-// Simple Scene Set Up
+///////////////////////////////
+// Physics Functions
+///////////////////////////////
+
+const physicsBodies: any[] = [];
+
+function createPhysicsBox(
+  sizeX: number,
+  sizeY: number,
+  sizeZ: number,
+  posX: number,
+  posY: number,
+  posZ: number,
+  mass: number = 0,
+  rotationAxis: THREE.Vector3 | null = null,
+  rotationAngle: number = 0,
+) {
+  // Create box shape
+  const shape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(sizeX / 2, sizeY / 2, sizeZ / 2),
+  );
+
+  const transform = new AmmoLib.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new AmmoLib.btVector3(posX, posY, posZ));
+
+  if (rotationAxis && rotationAngle !== 0) {
+    const tempAxis = new THREE.Vector3(
+      rotationAxis.x,
+      rotationAxis.y,
+      rotationAxis.z,
+    );
+    const tempQuat = new THREE.Quaternion();
+    tempQuat.setFromAxisAngle(tempAxis, rotationAngle);
+    const ammoQuat = new AmmoLib.btQuaternion(
+      tempQuat.x,
+      tempQuat.y,
+      tempQuat.z,
+      tempQuat.w,
+    );
+    transform.setRotation(ammoQuat);
+  }
+
+  const motionState = new AmmoLib.btDefaultMotionState(transform);
+  const localInertia = new AmmoLib.btVector3(0, 0, 0);
+
+  if (mass > 0) {
+    shape.calculateLocalInertia(mass, localInertia);
+  }
+
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    mass,
+    motionState,
+    shape,
+    localInertia,
+  );
+
+  const body = new AmmoLib.btRigidBody(rbInfo);
+
+  if (mass > 0) {
+    body.setActivationState(4);
+    body.setRestitution(0.2);
+    body.setFriction(0.5);
+  } else {
+    body.setRestitution(0.1);
+    body.setFriction(1);
+  }
+
+  physicsWorld.addRigidBody(body);
+  physicsBodies.push(body);
+
+  return body;
+}
+
+// Add ball physics
+function createPhysicsSphere(
+  radius: number,
+  posX: number,
+  posY: number,
+  posZ: number,
+  mass: number = 1,
+  restitution: number = 0.7,
+  friction: number = 0.8,
+) {
+  const shape = new AmmoLib.btSphereShape(radius);
+  const transform = new AmmoLib.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new AmmoLib.btVector3(posX, posY, posZ));
+
+  const motionState = new AmmoLib.btDefaultMotionState(transform);
+  const localInertia = new AmmoLib.btVector3(0, 0, 0);
+
+  if (mass > 0) {
+    shape.calculateLocalInertia(mass, localInertia);
+  }
+
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
+    mass,
+    motionState,
+    shape,
+    localInertia,
+  );
+
+  const body = new AmmoLib.btRigidBody(rbInfo);
+
+  if (mass > 0) {
+    body.setActivationState(4);
+    body.setRestitution(restitution);
+    body.setFriction(friction);
+    body.setDamping(0.05, 0.1);
+  }
+
+  physicsWorld.addRigidBody(body);
+  physicsBodies.push(body);
+
+  return body;
+}
+
+// Scene Manager
+enum SceneType {
+  TEMPLE_ONE = 1,
+  TEMPLE_TWO = 2,
+  TEMPLE_THREE = 3,
+  DOOR_SCENE = 4,
+}
+
+class SceneManager {
+  private currentScene: SceneType = SceneType.TEMPLE_ONE;
+  private scenes: Map<SceneType, THREE.Object3D> = new Map();
+
+  // UI elements
+  private sceneIndicator: HTMLDivElement;
+  private instructions: HTMLDivElement;
+  private inventoryHud: HTMLDivElement;
+  private puzzleMessage: HTMLDivElement;
+
+  // Player inventory
+  private collectedKeys: Set<SceneType> = new Set();
+
+  // Puzzle completion status
+  private puzzleCompleted: Map<SceneType, boolean> = new Map();
+
+  constructor() {
+    // Initialize puzzle completion status
+    this.puzzleCompleted.set(SceneType.TEMPLE_ONE, false);
+    this.puzzleCompleted.set(SceneType.TEMPLE_TWO, false);
+    this.puzzleCompleted.set(SceneType.TEMPLE_THREE, false);
+
+    // Scene type UI
+    this.sceneIndicator = document.createElement("div");
+    this.sceneIndicator.style.position = "fixed";
+    this.sceneIndicator.style.top = "10px";
+    this.sceneIndicator.style.left = "10px";
+    this.sceneIndicator.style.color = "white";
+    this.sceneIndicator.style.fontFamily = "sans-serif";
+    this.sceneIndicator.style.fontSize = "16px";
+    this.sceneIndicator.style.padding = "8px 12px";
+    this.sceneIndicator.style.background = "rgba(0, 0, 0, 0.7)";
+    this.sceneIndicator.style.borderRadius = "4px";
+    this.sceneIndicator.style.zIndex = "1000";
+    document.body.appendChild(this.sceneIndicator);
+
+    // Instructions UI
+    this.instructions = document.createElement("div");
+    this.instructions.style.position = "fixed";
+    this.instructions.style.bottom = "10px";
+    this.instructions.style.left = "50%";
+    this.instructions.style.transform = "translateX(-50%)";
+    this.instructions.style.color = "white";
+    this.instructions.style.fontFamily = "sans-serif";
+    this.instructions.style.fontSize = "14px";
+    this.instructions.style.padding = "8px 12px";
+    this.instructions.style.background = "rgba(0, 0, 0, 0.7)";
+    this.instructions.style.borderRadius = "4px";
+    this.instructions.style.textAlign = "center";
+    this.instructions.style.zIndex = "1000";
+    this.instructions.innerHTML = `
+      Press 1, 2, 3, or 4 to switch scenes<br>
+      Current Scene: Temple 1 (Ball Puzzle)
+    `;
+    document.body.appendChild(this.instructions);
+
+    // Inventory UI
+    this.inventoryHud = document.createElement("div");
+    this.inventoryHud.style.position = "fixed";
+    this.inventoryHud.style.top = "10px";
+    this.inventoryHud.style.right = "10px";
+    this.inventoryHud.style.color = "white";
+    this.inventoryHud.style.fontFamily = "sans-serif";
+    this.inventoryHud.style.fontSize = "14px";
+    this.inventoryHud.style.padding = "8px 12px";
+    this.inventoryHud.style.background = "rgba(0, 0, 0, 0.7)";
+    this.inventoryHud.style.borderRadius = "4px";
+    this.inventoryHud.style.zIndex = "1000";
+    document.body.appendChild(this.inventoryHud);
+
+    // Puzzle message UI
+    this.puzzleMessage = document.createElement("div");
+    this.puzzleMessage.style.position = "fixed";
+    this.puzzleMessage.style.top = "50%";
+    this.puzzleMessage.style.left = "50%";
+    this.puzzleMessage.style.transform = "translate(-50%, -50%)";
+    this.puzzleMessage.style.color = "white";
+    this.puzzleMessage.style.fontFamily = "sans-serif";
+    this.puzzleMessage.style.fontSize = "24px";
+    this.puzzleMessage.style.padding = "20px 30px";
+    this.puzzleMessage.style.background = "rgba(0, 0, 0, 0.8)";
+    this.puzzleMessage.style.borderRadius = "8px";
+    this.puzzleMessage.style.textAlign = "center";
+    this.puzzleMessage.style.zIndex = "1001";
+    this.puzzleMessage.style.display = "none";
+    document.body.appendChild(this.puzzleMessage);
+
+    this.updateUI();
+
+    // Setup keyboard listeners for scene switching
+    globalThis.addEventListener("keydown", (e) => {
+      if (e.key === "1") this.switchScene(SceneType.TEMPLE_ONE);
+      else if (e.key === "2") this.switchScene(SceneType.TEMPLE_TWO);
+      else if (e.key === "3") this.switchScene(SceneType.TEMPLE_THREE);
+      else if (e.key === "4") this.switchScene(SceneType.DOOR_SCENE);
+    });
+  }
+
+  addScene(sceneType: SceneType, sceneObject: THREE.Object3D) {
+    this.scenes.set(sceneType, sceneObject);
+  }
+
+  // Showing/Hiding Scenes
+  switchScene(sceneType: SceneType) {
+    if (this.currentScene === sceneType) return;
+    const currentSceneObj = this.scenes.get(this.currentScene);
+    if (currentSceneObj) {
+      currentSceneObj.visible = false;
+    }
+    const newSceneObj = this.scenes.get(sceneType);
+    if (newSceneObj) {
+      newSceneObj.visible = true;
+      this.currentScene = sceneType;
+      this.updateUI();
+    }
+  }
+
+  getCurrentScene(): SceneType {
+    return this.currentScene;
+  }
+
+  completePuzzle(sceneType: SceneType) {
+    this.puzzleCompleted.set(sceneType, true);
+    this.updateUI();
+
+    // Show puzzle completion message
+    this.showPuzzleMessage(
+      `Temple ${sceneType} puzzle solved! Key is now available.`,
+    );
+  }
+
+  isPuzzleCompleted(sceneType: SceneType): boolean {
+    return this.puzzleCompleted.get(sceneType) || false;
+  }
+
+  collectKey(sceneType: SceneType) {
+    if (this.isPuzzleCompleted(sceneType)) {
+      this.collectedKeys.add(sceneType);
+      this.updateUI();
+      console.log(`Collected key from Temple ${sceneType}`);
+      this.showPuzzleMessage(`Temple ${sceneType} key collected!`);
+    }
+  }
+
+  hasKey(sceneType: SceneType): boolean {
+    return this.collectedKeys.has(sceneType);
+  }
+
+  getAllKeysCollected(): boolean {
+    return this.collectedKeys.size === 3;
+  }
+
+  getKeyCount(): number {
+    return this.collectedKeys.size;
+  }
+
+  showPuzzleMessage(message: string) {
+    this.puzzleMessage.textContent = message;
+    this.puzzleMessage.style.display = "block";
+
+    // Hide message after 3 seconds
+    setTimeout(() => {
+      this.puzzleMessage.style.display = "none";
+    }, 3000);
+  }
+
+  private updateUI() {
+    let sceneName = "";
+    switch (this.currentScene) {
+      case SceneType.TEMPLE_ONE:
+        sceneName = "Temple 1 - Ball Puzzle";
+        break;
+      case SceneType.TEMPLE_TWO:
+        sceneName = "Temple 2";
+        break;
+      case SceneType.TEMPLE_THREE:
+        sceneName = "Temple 3";
+        break;
+      case SceneType.DOOR_SCENE:
+        sceneName = "Door Scene";
+        break;
+    }
+
+    this.sceneIndicator.innerHTML = `
+      <strong>Current Scene:</strong> ${sceneName}<br>
+      <strong>Keys Collected:</strong> ${this.collectedKeys.size}/3
+    `;
+
+    // Update inventory display
+    let inventoryText = "Inventory: ";
+    if (this.collectedKeys.size === 0) {
+      inventoryText += "Empty";
+    } else {
+      const keys = Array.from(this.collectedKeys).sort();
+      inventoryText += keys.map((k) => `Temple ${k} Key`).join(", ");
+    }
+    this.inventoryHud.textContent = inventoryText;
+
+    const sceneTexts = [
+      "Temple 1 (Ball Puzzle)",
+      "Temple 2",
+      "Temple 3",
+      "Door Scene",
+    ];
+    this.instructions.innerHTML = `
+      Press 1, 2, 3, or 4 to switch scenes<br>
+      Current Scene: ${sceneTexts[this.currentScene - 1]}<br>
+      Press E to interact with keys and doors
+    `;
+  }
+}
+
+// Scene manager
+const sceneManager = new SceneManager();
+
+// Main Scene Container
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020); // Scene Background Color
-const camera = new THREE.PerspectiveCamera( // Camera Settings
+scene.background = new THREE.Color(0x202020);
+
+// Separate scene containers for each scene
+const sceneContainer1 = new THREE.Object3D(); // Temple 1 (ball puzzle)
+const sceneContainer2 = new THREE.Object3D(); // Temple 2
+const sceneContainer3 = new THREE.Object3D(); // Temple 3
+const sceneContainer4 = new THREE.Object3D(); // Door scene
+
+scene.add(sceneContainer1, sceneContainer2, sceneContainer3, sceneContainer4);
+sceneManager.addScene(SceneType.TEMPLE_ONE, sceneContainer1);
+sceneManager.addScene(SceneType.TEMPLE_TWO, sceneContainer2);
+sceneManager.addScene(SceneType.TEMPLE_THREE, sceneContainer3);
+sceneManager.addScene(SceneType.DOOR_SCENE, sceneContainer4);
+
+// Show only scene 1
+sceneContainer1.visible = true;
+sceneContainer2.visible = false;
+sceneContainer3.visible = false;
+sceneContainer4.visible = false;
+
+const camera = new THREE.PerspectiveCamera(
   95,
   globalThis.innerWidth / globalThis.innerHeight,
   0.1,
   1000,
 );
-
-// Camera Position
-camera.position.set(0, 1.5, 0); // (0, 1.5, 3)
+camera.position.set(0, 1.6, 0);
 
 // GLTF Loader
 const loader = new GLTFLoader();
-let templeModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
-let aztecTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
-let forgottenTempleModel: THREE.Object3D<THREE.Object3DEventMap> | null = null;
-let templeBody: any = null;
-let aztecTempleBody: any = null;
-let forgottenTempleBody: any = null;
-// Door physics body (for locking/unlocking)
-let doorBody: any = null;
 
-////////////////////////////////
-// Light Settings
-///////////////////////////////
+//////////////////////////////////////
+// Scene 1: Temple 1 (Ball Puzzle)
+//////////////////////////////////////
 
-// Main directional light
-const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-mainLight.position.set(10, 15, 10);
-mainLight.castShadow = true;
-scene.add(mainLight);
+// Light for scene 1
+const scene1Light = new THREE.DirectionalLight(0xffffff, 1);
+scene1Light.position.set(10, 15, 10);
+scene1Light.castShadow = true;
+sceneContainer1.add(scene1Light);
 
-// Fill light
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
-fillLight.position.set(-5, 5, -5);
-scene.add(fillLight);
+const scene1Ambient = new THREE.AmbientLight(0xffffff, 0.6);
+sceneContainer1.add(scene1Ambient);
 
-// Soft Light
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-
-////////////////////////////////
-// Models
-///////////////////////////////
-
-// Load the first temple model
-function onTempleLoaded(gltf: { scene: THREE.Object3D }) {
-  const model = gltf.scene;
-  const axis = new THREE.Vector3(0, 1, 0);
-  const angle = THREE.MathUtils.degToRad(0);
-  templeModel = model;
-  model.scale.set(5, 5, 5);
-  model.position.set(-15, 0, 0);
-  model.rotateOnWorldAxis(axis, angle);
-
-  scene.add(model);
-  console.log("First temple model loaded successfully");
-  createExactMeshPhysicsBody(templeModel, templeBody, -15, 0, 0, 5);
-}
-
-function onTempleError(error: unknown) {
-  console.error("Error loading first temple model:", error);
-}
-
-function onTempleProgress(xhr: { loaded: number; total: number }) {
-  if (xhr.total > 0) {
-    const percent = xhr.loaded / xhr.total * 100;
-    console.log(`Loading first temple: ${percent.toFixed(1)}%`);
-  }
-}
-
-// Load the Aztec temple model
-function onAztecTempleLoaded(gltf: { scene: THREE.Object3D }) {
-  const model = gltf.scene;
-  const axis = new THREE.Vector3(0, 1, 0);
-  const angle = THREE.MathUtils.degToRad(270);
-  aztecTempleModel = model;
-  model.scale.set(0.01, 0.01, 0.01);
-  model.position.set(5, 0, 0);
-  model.rotateOnWorldAxis(axis, angle);
-
-  scene.add(model);
-  console.log("Aztec temple model loaded successfully");
-  createExactMeshPhysicsBody(aztecTempleModel, aztecTempleBody, 5, 0, 0, 0.01);
-}
-
-function onAztecTempleError(error: unknown) {
-  console.error("Error loading Aztec temple model:", error);
-}
-
-function onAztecTempleProgress(xhr: { loaded: number; total: number }) {
-  if (xhr.total > 0) {
-    const percent = xhr.loaded / xhr.total * 100;
-    console.log(`Loading Aztec temple: ${percent.toFixed(1)}%`);
-  }
-}
-
-// Load the Forgotten temple model
-function onForgottenTempleLoaded(gltf: { scene: THREE.Object3D }) {
-  const model = gltf.scene;
-  const axis = new THREE.Vector3(0, 1, 0);
-  const angle = THREE.MathUtils.degToRad(270);
-  forgottenTempleModel = model;
-  model.scale.set(0.0045, 0.0045, 0.0045);
-  model.position.set(-1, 0, 10);
-  model.rotateOnWorldAxis(axis, angle);
-
-  scene.add(model);
-  console.log("Forgotten temple model loaded successfully");
-  createExactMeshPhysicsBody(
-    forgottenTempleModel,
-    forgottenTempleBody,
-    -1,
-    0,
-    10,
-    0.0045,
-  );
-}
-
-function onForgottenTempleError(error: unknown) {
-  console.error("Error loading Forgotten temple model:", error);
-}
-
-function onForgottenTempleProgress(xhr: { loaded: number; total: number }) {
-  if (xhr.total > 0) {
-    const percent = xhr.loaded / xhr.total * 100;
-    console.log(`Loading Forgotten temple: ${percent.toFixed(1)}%`);
-  }
-}
-
-// Load temples
+// Load temple 1 model
 loader.load(
   "models/temple/scene.gltf",
-  onTempleLoaded,
-  onTempleProgress,
-  onTempleError,
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(5, 5, 5);
+    model.position.set(-15, 0, 0);
+    sceneContainer1.add(model);
+    console.log("Temple 1 model loaded for scene 1");
+  },
+  undefined,
+  console.error,
 );
 
-loader.load(
-  "models/aztec_temple/scene.gltf",
-  onAztecTempleLoaded,
-  onAztecTempleProgress,
-  onAztecTempleError,
-);
-
-loader.load(
-  "models/forgotten_temple/scene.gltf",
-  onForgottenTempleLoaded,
-  onForgottenTempleProgress,
-  onForgottenTempleError,
-);
-
-////////////////////////////////
-// 3D Objects
-///////////////////////////////
-
-// Capsule player
-const geometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const capsule = new THREE.Mesh(geometry, material);
-scene.add(capsule);
-
-// shpere movable object for puzzles
-const shpereGeo = new THREE.SphereGeometry(0.5, 16, 16);
-const shpereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-const sphere = new THREE.Mesh(shpereGeo, shpereMat);
+// Ball for puzzle
+const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+const sphere = new THREE.Mesh(sphereGeo, sphereMat);
 sphere.position.set(5, 10, 0);
-scene.add(sphere);
+sceneContainer1.add(sphere);
 
-////////////////////////////////
-// Physics Puzzle
-///////////////////////////////
-// On slope for physics puzzle
-const PillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
-const PillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
-const pillar = new THREE.Mesh(PillarGeometry, PillarMaterial);
+// Platform slope
+const pillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
+const pillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
 pillar.position.set(-5, 0, -20);
 const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
 pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
-console.log(pillar.quaternion);
-scene.add(pillar);
+sceneContainer1.add(pillar);
 
-//Left slide for physics puzzle
+// Left slide
 const leftSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
 const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
 const leftSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 leftSlide.rotateOnAxis(leftSlideAxis, Math.PI / 12);
 leftSlide.position.set(-8, 0, -23.25);
-scene.add(leftSlide);
+sceneContainer1.add(leftSlide);
 
-//Right slide for physics puzzle
+// Right slide
 const rightSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
 const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
 const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
 const rightSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 rightSlide.rotateOnAxis(rightSlideAxis, -Math.PI / 12);
 rightSlide.position.set(-2, 0, -23.25);
-scene.add(rightSlide);
-//Win Wall
+sceneContainer1.add(rightSlide);
+
+// Win Wall (Green)
 const winWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27F538 });
 const winWall = new THREE.Mesh(winWallGeometry, winWallMaterial);
 winWall.position.set(-10, 0, -23);
-scene.add(winWall);
-//Lose Wall
+sceneContainer1.add(winWall);
+
+// Lose Wall (Red)
 const loseWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xF52727 });
 const loseWall = new THREE.Mesh(loseWallGeometry, loseWallMaterial);
 loseWall.position.set(0, 0, -23);
-scene.add(loseWall);
+sceneContainer1.add(loseWall);
 
-//back Wall
+// Back Wall
 const backWallGeometry = new THREE.BoxGeometry(10, 5, 1);
 const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
 const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
 backWall.position.set(-5, 0, -24);
-scene.add(backWall);
+sceneContainer1.add(backWall);
+
+function createKeyMesh(color: number, position: THREE.Vector3): THREE.Group {
+  const keyGroup = new THREE.Group();
+  const handleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8);
+  const handleMaterial = new THREE.MeshStandardMaterial({
+    color: color,
+    metalness: 0.9,
+    roughness: 0.1,
+  });
+  const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+  handle.position.y = 0.15;
+  const teethGeometry = new THREE.BoxGeometry(0.15, 0.02, 0.1);
+  const teeth1 = new THREE.Mesh(teethGeometry, handleMaterial);
+  teeth1.position.set(0.05, 0.3, 0);
+  const teeth2 = new THREE.Mesh(teethGeometry, handleMaterial);
+  teeth2.position.set(0.1, 0.35, 0);
+
+  keyGroup.add(handle);
+  keyGroup.add(teeth1);
+  keyGroup.add(teeth2);
+  keyGroup.position.copy(position);
+
+  // Add rotation animation
+  keyGroup.userData = {
+    isKey: true,
+    templeType: SceneType.TEMPLE_ONE,
+    originalY: position.y,
+    time: 0,
+  };
+
+  return keyGroup;
+}
+
+// Create Temple 1 key
+const temple1KeyPos = new THREE.Vector3(-10, 1, -10);
+const temple1Key = createKeyMesh(0xffff44, temple1KeyPos);
+
+// Hide the key -> only show after puzzle is solved
+temple1Key.visible = false;
+sceneContainer1.add(temple1Key);
+
+// Track which wall the ball hit
+let ballHitWinWall = false;
+let ballHitLoseWall = false;
 
 ////////////////////////////////
-// Key, Door, and Inventory
-///////////////////////////////
+// Scene 2: Temple 2
+////////////////////////////////
 
-// Simple key mesh
-const keyGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.5);
-const keyMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffff44,
-  metalness: 0.8,
-  roughness: 0.2,
-});
-const keyMesh = new THREE.Mesh(keyGeometry, keyMaterial);
-// Change this to move where the key spawns
-keyMesh.position.set(-10, 0.0, -10);
-scene.add(keyMesh);
+// Light for scene 2
+const scene2Light = new THREE.DirectionalLight(0xffffff, 1);
+scene2Light.position.set(10, 15, 10);
+scene2Light.castShadow = true;
+sceneContainer2.add(scene2Light);
 
-// Simple door mesh
+const scene2Ambient = new THREE.AmbientLight(0xffffff, 0.6);
+sceneContainer2.add(scene2Ambient);
+
+// Load temple 2 model
+loader.load(
+  "models/aztec_temple/scene.gltf",
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(0.01, 0.01, 0.01);
+    model.position.set(5, 0, 0);
+    const axis = new THREE.Vector3(0, 1, 0);
+    const angle = THREE.MathUtils.degToRad(270);
+    model.rotateOnWorldAxis(axis, angle);
+    sceneContainer2.add(model);
+    console.log("Temple 2 model loaded for scene 2");
+  },
+  undefined,
+  console.error,
+);
+
+// Create Temple 2 key
+const temple2KeyPos = new THREE.Vector3(0, 1, 0);
+const temple2Key = createKeyMesh(0xff4444, temple2KeyPos);
+temple2Key.userData.templeType = SceneType.TEMPLE_TWO;
+
+// Hide the key -> only show after puzzle is solved
+temple2Key.visible = false;
+sceneContainer2.add(temple2Key);
+
+////////////////////////////////
+// Scene 3: Temple 3
+////////////////////////////////
+
+// Light for scene 3
+const scene3Light = new THREE.DirectionalLight(0xffffff, 1);
+scene3Light.position.set(10, 15, 10);
+scene3Light.castShadow = true;
+sceneContainer3.add(scene3Light);
+
+const scene3Ambient = new THREE.AmbientLight(0xffffff, 0.6);
+sceneContainer3.add(scene3Ambient);
+
+// Load temple 3 model
+loader.load(
+  "models/forgotten_temple/scene.gltf",
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(0.0045, 0.0045, 0.0045);
+    model.position.set(-1, 0, 10);
+    const axis = new THREE.Vector3(0, 1, 0);
+    const angle = THREE.MathUtils.degToRad(270);
+    model.rotateOnWorldAxis(axis, angle);
+    sceneContainer3.add(model);
+    console.log("Temple 3 model loaded for scene 3");
+  },
+  undefined,
+  console.error,
+);
+
+// Create Temple 3 key
+const temple3KeyPos = new THREE.Vector3(0, 1, 0);
+const temple3Key = createKeyMesh(0x4444ff, temple3KeyPos);
+temple3Key.userData.templeType = SceneType.TEMPLE_THREE;
+
+// Hide the key -> only show after puzzle is solved
+temple3Key.visible = false;
+sceneContainer3.add(temple3Key);
+
+////////////////////////////////
+// Scene 4: Dore Scene
+////////////////////////////////
+
+// Light for scene 4
+const scene4Light = new THREE.DirectionalLight(0xffffff, 1);
+scene4Light.position.set(10, 15, 10);
+scene4Light.castShadow = true;
+sceneContainer4.add(scene4Light);
+
+const scene4Ambient = new THREE.AmbientLight(0xffffff, 0.6);
+sceneContainer4.add(scene4Ambient);
+
+// Door for scene 4
 const doorGeometry = new THREE.BoxGeometry(2, 3, 0.2);
 const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x884422 });
 const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
-// Change this to move where the door spawns
-doorMesh.position.set(-10, 1.5, -12);
-scene.add(doorMesh);
+doorMesh.position.set(0, 1.5, -5);
+sceneContainer4.add(doorMesh);
 
-// Inventory state
-let hasTempleKey = false;
-let doorLocked = true;
+// Show which keys have been collected
+const keyIndicator1 = createKeyIndicator(0xff4444, -2, 2);
+const keyIndicator2 = createKeyIndicator(0xffff44, 0, 2);
+const keyIndicator3 = createKeyIndicator(0x4444ff, 2, 2);
+keyIndicator1.userData.isIndicator = true;
+keyIndicator2.userData.isIndicator = true;
+keyIndicator3.userData.isIndicator = true;
+sceneContainer4.add(keyIndicator1, keyIndicator2, keyIndicator3);
 
-// Very small HUD for inventory
-const inventoryHud = document.createElement("div");
-inventoryHud.style.position = "fixed";
-inventoryHud.style.top = "10px";
-inventoryHud.style.left = "50%";
-inventoryHud.style.transform = "translateX(-50%)";
-inventoryHud.style.color = "white";
-inventoryHud.style.fontFamily = "sans-serif";
-inventoryHud.style.fontSize = "14px";
-inventoryHud.style.padding = "4px 8px";
-inventoryHud.style.background = "rgba(0, 0, 0, 0.5)";
-inventoryHud.textContent = "Inventory: (empty)";
-document.body.appendChild(inventoryHud);
-
-// Door physics body so it blocks the player when locked
-{
-  const halfWidth = 1;
-  const halfHeight = 1.5;
-  const halfDepth = 0.1;
-  const doorShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(halfWidth, halfHeight, halfDepth),
-  );
-
-  const doorTransform = new AmmoLib.btTransform();
-  doorTransform.setIdentity();
-  doorTransform.setOrigin(
-    new AmmoLib.btVector3(
-      doorMesh.position.x,
-      doorMesh.position.y,
-      doorMesh.position.z,
-    ),
-  );
-
-  const doorMotionState = new AmmoLib.btDefaultMotionState(doorTransform);
-  const zeroDoorInertia = new AmmoLib.btVector3(0, 0, 0);
-
-  const doorRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    doorMotionState,
-    doorShape,
-    zeroDoorInertia,
-  );
-
-  doorBody = new AmmoLib.btRigidBody(doorRBInfo);
-  doorBody.setFriction(20);
-  doorBody.setRestitution(0);
-  physicsWorld.addRigidBody(doorBody);
+function createKeyIndicator(color: number, x: number, y: number): THREE.Mesh {
+  const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+  const material = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.3,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(x, y, -4);
+  return mesh;
 }
+
+///////////////////
+// Player Setup
+//////////////////
+
+// Invisible capsule for player body
+const capsuleGeometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1); // We could always change it back if we want
+const capsuleMaterial = new THREE.MeshBasicMaterial({
+  color: 0x00ff00,
+  transparent: true,
+  opacity: 0.0,
+});
+
+const capsule1 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+const capsule2 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+const capsule3 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+const capsule4 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+
+// Add player to all scene containers
+sceneContainer1.add(capsule1);
+sceneContainer2.add(capsule2);
+sceneContainer3.add(capsule3);
+sceneContainer4.add(capsule4);
+
+// Store capsules in a map
+const sceneCapsules = new Map<SceneType, THREE.Mesh>();
+sceneCapsules.set(SceneType.TEMPLE_ONE, capsule1);
+sceneCapsules.set(SceneType.TEMPLE_TWO, capsule2);
+sceneCapsules.set(SceneType.TEMPLE_THREE, capsule3);
+sceneCapsules.set(SceneType.DOOR_SCENE, capsule4);
+
+// Platform for all scenes
+const platformGeometry = new THREE.BoxGeometry(70, 0.5, 70);
+const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+
+const platform1 = new THREE.Mesh(platformGeometry, platformMaterial);
+platform1.position.y = -0.5;
+sceneContainer1.add(platform1);
+
+const platform2 = new THREE.Mesh(platformGeometry, platformMaterial);
+platform2.position.y = -0.5;
+sceneContainer2.add(platform2);
+
+const platform3 = new THREE.Mesh(platformGeometry, platformMaterial);
+platform3.position.y = -0.5;
+sceneContainer3.add(platform3);
+
+const platform4 = new THREE.Mesh(platformGeometry, platformMaterial);
+platform4.position.y = -0.5;
+sceneContainer4.add(platform4);
+
+////////////////////////
+// Physics Bodies
+//////////////////////
+
+// Create physics bodies for Scene 1
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0); // Main platform
+createPhysicsBox(
+  5,
+  0.25,
+  5,
+  -5,
+  0,
+  -20,
+  0,
+  new THREE.Vector3(1, 0, 0),
+  Math.PI / 12,
+); // Pillar
+createPhysicsBox(
+  7,
+  0.25,
+  1.65,
+  -8,
+  0,
+  -23.25,
+  0,
+  new THREE.Vector3(0, 0, 1),
+  Math.PI / 12,
+); // Left slide
+createPhysicsBox(
+  7,
+  0.25,
+  1.65,
+  -2,
+  0,
+  -23.25,
+  0,
+  new THREE.Vector3(0, 0, 1),
+  -Math.PI / 12,
+); // Right slide
+createPhysicsBox(0.25, 5, 1.65, -10, 0, -23, 0); // Win Wall
+createPhysicsBox(0.25, 5, 1.65, 0, 0, -23, 0); // Lose Wall
+createPhysicsBox(10, 5, 1, -5, 0, -24, 0); // Back Wall
+
+// Create physics body for the ball
+const ballPhysicsBody = createPhysicsSphere(
+  0.5,
+  5,
+  10,
+  0,
+  1,
+  0.7,
+  0.8,
+);
+
+const physicsObjects: Array<{ mesh: THREE.Mesh; body: any }> = [];
+physicsObjects.push({ mesh: sphere, body: ballPhysicsBody });
+
+// Create physics bodies for Scene 2
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
+
+// Create physics bodies for Scene 3
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
+
+// Create physics bodies for Scene 4
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
+
+// Door physics body
+const doorPhysicsBody = createPhysicsBox(2, 3, 0.2, 0, 1.5, -5, 0);
 
 // Attach camera to player
 const cameraRig = new THREE.Group();
 scene.add(cameraRig);
-cameraRig.add(camera);
 
 // Mouse controls
 const controls = new PointerLockControls(camera, document.body);
@@ -334,437 +773,31 @@ document.addEventListener("click", () => {
   }
 });
 
-// Platform
-const platformGeometry = new THREE.BoxGeometry(70, 0.5, 70);
-const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
-const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-scene.add(platform);
-platform.position.y = -0.5;
-
-// Create Ammo rigid body for the cube
-const shape = new AmmoLib.btBoxShape(new AmmoLib.btVector3(0.5, 0.5, 0.5));
-
+// Create Ammo rigid body for the player
+const playerShape = new AmmoLib.btCapsuleShape(0.5, 1.8);
 const transform = new AmmoLib.btTransform();
 transform.setIdentity();
 transform.setOrigin(new AmmoLib.btVector3(0, 3, 2));
-
 const motionState = new AmmoLib.btDefaultMotionState(transform);
-
 const localInertia = new AmmoLib.btVector3(0, 0, 0);
-shape.calculateLocalInertia(1, localInertia);
-
+playerShape.calculateLocalInertia(1, localInertia);
 const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
   1,
   motionState,
-  shape,
+  playerShape,
   localInertia,
 );
-
 const capsuleBody = new AmmoLib.btRigidBody(rbInfo);
-
-// Sphere rigid body //
-const sphereRadius = 0.5;
-const sphereShape = new AmmoLib.btSphereShape(sphereRadius);
-
-const sphereTransform = new AmmoLib.btTransform();
-sphereTransform.setIdentity();
-sphereTransform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
-
-const sphereMotionState = new AmmoLib.btDefaultMotionState(sphereTransform);
-
-const sphereInertia = new AmmoLib.btVector3(0, 0, 0);
-sphereShape.calculateLocalInertia(1.0, sphereInertia);
-
-const sphereRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-  1.0,
-  sphereMotionState,
-  sphereShape,
-  sphereInertia,
-);
-
-const sphereBody = new AmmoLib.btRigidBody(sphereRBInfo);
-sphereBody.setDamping(0.5, 0.5);
-sphereBody.setFriction(0.8);
-sphereBody.setRestitution(0.7);
-physicsWorld.addRigidBody(sphereBody);
-console.log("Sphere rigid body created");
-
-// Physics tuning
-capsuleBody.setDamping(0.95, 0.95);
-capsuleBody.setFriction(20);
-capsuleBody.setRestitution(0);
+capsuleBody.setDamping(0.9, 0.9);
+capsuleBody.setFriction(0.5);
+capsuleBody.setRestitution(0.1);
+capsuleBody.setAngularFactor(new AmmoLib.btVector3(0, 0, 0));
+capsuleBody.setActivationState(4);
 physicsWorld.addRigidBody(capsuleBody);
-console.log("Capsule rigid body created");
 
-// Platform physics body
-const platformShape = new AmmoLib.btBoxShape(
-  new AmmoLib.btVector3(35, 0.25, 35),
-);
-
-const platformTransform = new AmmoLib.btTransform();
-platformTransform.setIdentity();
-platformTransform.setOrigin(
-  new AmmoLib.btVector3(
-    platform.position.x,
-    platform.position.y,
-    platform.position.z,
-  ),
-);
-
-const platformMotion = new AmmoLib.btDefaultMotionState(platformTransform);
-const zeroInertia = new AmmoLib.btVector3(0, 0, 0);
-
-const platformRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-  0,
-  platformMotion,
-  platformShape,
-  zeroInertia,
-);
-
-const platformBody = new AmmoLib.btRigidBody(platformRBInfo);
-
-platformBody.setFriction(20);
-platformBody.setRestitution(0);
-
-physicsWorld.addRigidBody(platformBody);
-
-// Physics for puzzle platform slope
-{
-  const pillarShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(2.5, 0.25, 2.5),
-  );
-
-  const pillarTransform = new AmmoLib.btTransform();
-  pillarTransform.setIdentity();
-  pillarTransform.setOrigin(
-    new AmmoLib.btVector3(
-      pillar.position.x,
-      pillar.position.y,
-      pillar.position.z,
-    ),
-  );
-  pillarTransform.setRotation(
-    new AmmoLib.btQuaternion(
-      pillar.quaternion.x,
-      pillar.quaternion.y,
-      pillar.quaternion.z,
-      pillar.quaternion.w,
-    ),
-  );
-
-  const pillarMotion = new AmmoLib.btDefaultMotionState(pillarTransform);
-
-  const pillarRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    pillarMotion,
-    pillarShape,
-    zeroInertia,
-  );
-
-  const pillarBody = new AmmoLib.btRigidBody(pillarRBInfo);
-
-  pillarBody.setFriction(20);
-  pillarBody.setRestitution(0);
-
-  physicsWorld.addRigidBody(pillarBody);
-}
-//Physics for puzzle back wall
-{
-  const backWallShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(5, 2.5, 0.5),
-  );
-
-  const backWallTransform = new AmmoLib.btTransform();
-  backWallTransform.setIdentity();
-  backWallTransform.setOrigin(
-    new AmmoLib.btVector3(
-      backWall.position.x,
-      backWall.position.y,
-      backWall.position.z,
-    ),
-  );
-  const backWallMotion = new AmmoLib.btDefaultMotionState(backWallTransform);
-  const backWallRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    backWallMotion,
-    backWallShape,
-    zeroInertia,
-  );
-
-  const backWallBody = new AmmoLib.btRigidBody(backWallRBInfo);
-
-  backWallBody.setFriction(20);
-  backWallBody.setRestitution(0);
-
-  physicsWorld.addRigidBody(backWallBody);
-}
-//Physics for Puzzle win Wall
-{
-  const winShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(0.125, 2.5, 0.825),
-  );
-
-  const winTransform = new AmmoLib.btTransform();
-  winTransform.setIdentity();
-  winTransform.setOrigin(
-    new AmmoLib.btVector3(
-      winWall.position.x,
-      winWall.position.y,
-      winWall.position.z,
-    ),
-  );
-  const winMotion = new AmmoLib.btDefaultMotionState(winTransform);
-  const winRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    winMotion,
-    winShape,
-    zeroInertia,
-  );
-  const winBody = new AmmoLib.btRigidBody(winRBInfo);
-  winBody.setFriction(20);
-  winBody.setRestitution(0);
-  physicsWorld.addRigidBody(winBody);
-}
-//Physics for Puzzle lose wall
-{
-  const loseShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(0.125, 2.5, 0.825),
-  );
-
-  const loseTransform = new AmmoLib.btTransform();
-  loseTransform.setIdentity();
-  loseTransform.setOrigin(
-    new AmmoLib.btVector3(
-      loseWall.position.x,
-      loseWall.position.y,
-      loseWall.position.z,
-    ),
-  );
-  const loseMotion = new AmmoLib.btDefaultMotionState(loseTransform);
-  const loseRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    loseMotion,
-    loseShape,
-    zeroInertia,
-  );
-  const loseBody = new AmmoLib.btRigidBody(loseRBInfo);
-  loseBody.setFriction(20);
-  loseBody.setRestitution(0);
-  physicsWorld.addRigidBody(loseBody);
-}
-//Physics for slopes
-{
-  //Left Slope
-  const leftSlideShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(3.5, 0.125, 0.825),
-  );
-
-  const leftSlideTransform = new AmmoLib.btTransform();
-  leftSlideTransform.setIdentity();
-  leftSlideTransform.setOrigin(
-    new AmmoLib.btVector3(
-      leftSlide.position.x,
-      leftSlide.position.y,
-      leftSlide.position.z,
-    ),
-  );
-  leftSlideTransform.setRotation(
-    new AmmoLib.btQuaternion(
-      leftSlide.quaternion.x,
-      leftSlide.quaternion.y,
-      leftSlide.quaternion.z,
-      leftSlide.quaternion.w,
-    ),
-  );
-
-  const leftSlideMotion = new AmmoLib.btDefaultMotionState(leftSlideTransform);
-
-  const leftSlideRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    leftSlideMotion,
-    leftSlideShape,
-    zeroInertia,
-  );
-
-  const leftSlideBody = new AmmoLib.btRigidBody(leftSlideRBInfo);
-
-  leftSlideBody.setFriction(20);
-  leftSlideBody.setRestitution(0);
-
-  physicsWorld.addRigidBody(leftSlideBody);
-  //Right Slope
-  const rightSlideShape = new AmmoLib.btBoxShape(
-    new AmmoLib.btVector3(3.5, 0.125, 0.825),
-  );
-
-  const rightSlideTransform = new AmmoLib.btTransform();
-  rightSlideTransform.setIdentity();
-  rightSlideTransform.setOrigin(
-    new AmmoLib.btVector3(
-      rightSlide.position.x,
-      rightSlide.position.y,
-      rightSlide.position.z,
-    ),
-  );
-  rightSlideTransform.setRotation(
-    new AmmoLib.btQuaternion(
-      rightSlide.quaternion.x,
-      rightSlide.quaternion.y,
-      rightSlide.quaternion.z,
-      rightSlide.quaternion.w,
-    ),
-  );
-
-  const rightSlideMotion = new AmmoLib.btDefaultMotionState(
-    rightSlideTransform,
-  );
-
-  const rightSlideRBInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    rightSlideMotion,
-    rightSlideShape,
-    zeroInertia,
-  );
-
-  const rightSlideBody = new AmmoLib.btRigidBody(rightSlideRBInfo);
-
-  rightSlideBody.setFriction(20);
-  rightSlideBody.setRestitution(0);
-
-  physicsWorld.addRigidBody(rightSlideBody);
-}
-// Create exact mesh physics body with triangle mesh
-function createExactMeshPhysicsBody(
-  model: THREE.Object3D | null,
-  _bodyRef: any,
-  x: number,
-  y: number,
-  z: number,
-  scale: number,
-) {
-  if (!model) return;
-
-  const allVertices: number[] = [];
-  const allIndices: number[] = [];
-
-  model.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      const mesh = child as THREE.Mesh;
-      const geometry = mesh.geometry;
-
-      const positionAttribute = geometry.getAttribute("position");
-      const vertexOffset = allVertices.length / 3;
-      const worldMatrix = mesh.matrixWorld;
-      const tempVertex = new THREE.Vector3();
-
-      for (let i = 0; i < positionAttribute.count; i++) {
-        tempVertex.fromBufferAttribute(positionAttribute, i);
-        tempVertex.applyMatrix4(worldMatrix);
-        tempVertex.multiplyScalar(scale);
-
-        allVertices.push(tempVertex.x, tempVertex.y, tempVertex.z);
-      }
-
-      if (geometry.index) {
-        const indices = geometry.index.array;
-        for (let i = 0; i < indices.length; i++) {
-          allIndices.push(indices[i] + vertexOffset);
-        }
-      } else {
-        for (let i = 0; i < positionAttribute.count; i += 3) {
-          allIndices.push(
-            vertexOffset + i,
-            vertexOffset + i + 1,
-            vertexOffset + i + 2,
-          );
-        }
-      }
-    }
-  });
-
-  if (allVertices.length === 0) {
-    console.warn("No vertices found for mesh physics body");
-    return;
-  }
-
-  // Create Ammo triangle mesh
-  const triangleMesh = new AmmoLib.btTriangleMesh();
-
-  for (let i = 0; i < allIndices.length; i += 3) {
-    const i0 = allIndices[i] * 3;
-    const i1 = allIndices[i + 1] * 3;
-    const i2 = allIndices[i + 2] * 3;
-
-    const v0 = new AmmoLib.btVector3(
-      allVertices[i0],
-      allVertices[i0 + 1],
-      allVertices[i0 + 2],
-    );
-    const v1 = new AmmoLib.btVector3(
-      allVertices[i1],
-      allVertices[i1 + 1],
-      allVertices[i1 + 2],
-    );
-    const v2 = new AmmoLib.btVector3(
-      allVertices[i2],
-      allVertices[i2 + 1],
-      allVertices[i2 + 2],
-    );
-
-    triangleMesh.addTriangle(v0, v1, v2, true);
-
-    AmmoLib.destroy(v0);
-    AmmoLib.destroy(v1);
-    AmmoLib.destroy(v2);
-  }
-
-  const useBvh = true;
-  const shape = useBvh
-    ? new AmmoLib.btBvhTriangleMeshShape(triangleMesh, true, true)
-    : new AmmoLib.btConvexTriangleMeshShape(triangleMesh, true);
-
-  const transform = new AmmoLib.btTransform();
-  transform.setIdentity();
-  transform.setOrigin(new AmmoLib.btVector3(x, y, z));
-
-  const motionState = new AmmoLib.btDefaultMotionState(transform);
-  const localInertia = new AmmoLib.btVector3(0, 0, 0);
-
-  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
-    0,
-    motionState,
-    shape,
-    localInertia,
-  );
-
-  const body = new AmmoLib.btRigidBody(rbInfo);
-  body.setFriction(20);
-  body.setRestitution(0);
-
-  physicsWorld.addRigidBody(body);
-
-  if (model === templeModel) {
-    templeBody = body;
-  } else if (model === aztecTempleModel) {
-    aztecTempleBody = body;
-  } else if (model === forgottenTempleModel) {
-    forgottenTempleBody = body;
-  }
-
-  console.log(
-    `Created exact mesh physics body with ${
-      allVertices.length / 3
-    } vertices and ${allIndices.length / 3} triangles`,
-  );
-}
-
-// Renderer
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
-document.body.appendChild(renderer.domElement);
+cameraRig.add(camera);
 
 // Player Input
-// WASD and spacebar for movement - e is to kick/interact
 const keys = {
   w: false,
   a: false,
@@ -787,9 +820,7 @@ globalThis.addEventListener("keyup", (e) => {
 
 // Grounded check
 function isGrounded(): boolean {
-  const capsuleBottom = capsule.position.y - 0.5;
-  const platformTop = platform.position.y + 0.25;
-  return capsuleBottom <= platformTop + 0.05;
+  return Math.abs(capsuleBody.getLinearVelocity().y()) < 0.1;
 }
 
 // Apply force helper
@@ -798,72 +829,259 @@ function applyMovementImpulse(fx: number, fy: number, fz: number) {
   capsuleBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
 }
 
-// Interaction logic: key pickup, door unlock, or kick sphere
-function handleInteraction() {
-  const playerPos = capsule.position;
-
-  // Try pick up key
-  if (!hasTempleKey && keyMesh.visible) {
-    const keyDist = playerPos.distanceTo(keyMesh.position);
-    if (keyDist < 2) {
-      hasTempleKey = true;
-      keyMesh.visible = false;
-      inventoryHud.textContent = "Inventory: Temple Key";
-      console.log("Picked up Temple Key");
-      return;
-    }
+// Get player position
+function getPlayerPosition(): THREE.Vector3 {
+  const ms = capsuleBody.getMotionState();
+  if (ms) {
+    const tempTransform = new AmmoLib.btTransform();
+    ms.getWorldTransform(tempTransform);
+    const origin = tempTransform.getOrigin();
+    return new THREE.Vector3(origin.x(), origin.y(), origin.z());
   }
+  return new THREE.Vector3(0, 0, 0);
+}
 
-  // Try unlock door
-  if (doorLocked && hasTempleKey) {
-    const doorDist = playerPos.distanceTo(doorMesh.position);
-    if (doorDist < 3) {
-      doorLocked = false;
-      doorMesh.visible = false;
-      if (doorBody) {
-        physicsWorld.removeRigidBody(doorBody);
+///////////////////////////////
+// UI Internaction System
+///////////////////////////////
+
+// interaction prompt UI
+const interactionPrompt = document.createElement("div");
+interactionPrompt.style.position = "fixed";
+interactionPrompt.style.bottom = "100px";
+interactionPrompt.style.left = "50%";
+interactionPrompt.style.transform = "translateX(-50%)";
+interactionPrompt.style.color = "white";
+interactionPrompt.style.fontFamily = "sans-serif";
+interactionPrompt.style.fontSize = "20px";
+interactionPrompt.style.padding = "10px 20px";
+interactionPrompt.style.background = "rgba(0, 0, 0, 0.7)";
+interactionPrompt.style.borderRadius = "4px";
+interactionPrompt.style.textAlign = "center";
+interactionPrompt.style.zIndex = "1000";
+interactionPrompt.style.display = "none";
+document.body.appendChild(interactionPrompt);
+
+// lose message UI
+const loseMessage = document.createElement("div");
+loseMessage.style.position = "fixed";
+loseMessage.style.top = "50%";
+loseMessage.style.left = "50%";
+loseMessage.style.transform = "translate(-50%, -50%)";
+loseMessage.style.color = "#ff3333";
+loseMessage.style.fontFamily = "sans-serif";
+loseMessage.style.fontSize = "32px";
+loseMessage.style.fontWeight = "bold";
+loseMessage.style.padding = "30px 40px";
+loseMessage.style.background = "rgba(0, 0, 0, 0.85)";
+loseMessage.style.borderRadius = "10px";
+loseMessage.style.textAlign = "center";
+loseMessage.style.boxShadow = "0 0 20px rgba(255, 50, 50, 0.5)";
+loseMessage.style.zIndex = "1002";
+loseMessage.style.display = "none";
+loseMessage.textContent = "YOU LOSE! WRONG WALL!";
+document.body.appendChild(loseMessage);
+
+// Track if player is near an interactable object
+let nearInteractable = false;
+let _currentInteractableType = "";
+let _currentInteractableName = "";
+
+// Check distance to object helper
+function getDistanceToPlayer(objectPos: THREE.Vector3): number {
+  const playerPos = getPlayerPosition();
+  return playerPos.distanceTo(objectPos);
+}
+
+// Check for nearby interactables
+function checkForInteractables() {
+  const currentScene = sceneManager.getCurrentScene();
+
+  nearInteractable = false;
+  _currentInteractableType = "";
+  _currentInteractableName = "";
+
+  if (currentScene === SceneType.TEMPLE_ONE) {
+    if (temple1Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_ONE)) {
+      const distance = getDistanceToPlayer(temple1Key.position);
+      if (distance < 3) {
+        nearInteractable = true;
+        _currentInteractableType = "key";
+        _currentInteractableName = "Temple 1 Key";
+        interactionPrompt.textContent = "Press E to pick up key";
+        interactionPrompt.style.display = "block";
       }
-      console.log("Door unlocked with Temple Key!");
-      return;
+    }
+
+    // Check ball
+    if (!ballHitWinWall && !ballHitLoseWall) {
+      const distance = getDistanceToPlayer(sphere.position);
+      if (distance < 3) {
+        nearInteractable = true;
+        _currentInteractableType = "ball";
+        _currentInteractableName = "Ball";
+        interactionPrompt.textContent = "Press E to kick ball";
+        interactionPrompt.style.display = "block";
+      }
+    }
+  } else if (currentScene === SceneType.TEMPLE_TWO) {
+    // Check Temple 2 key
+    if (temple2Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_TWO)) {
+      const distance = getDistanceToPlayer(temple2Key.position);
+      if (distance < 3) {
+        nearInteractable = true;
+        _currentInteractableType = "key";
+        _currentInteractableName = "Temple 2 Key";
+        interactionPrompt.textContent = "Press E to pick up key";
+        interactionPrompt.style.display = "block";
+      }
+    }
+  } else if (currentScene === SceneType.TEMPLE_THREE) {
+    // Check Temple 3 key
+    if (temple3Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_THREE)) {
+      const distance = getDistanceToPlayer(temple3Key.position);
+      if (distance < 3) {
+        nearInteractable = true;
+        _currentInteractableType = "key";
+        _currentInteractableName = "Temple 3 Key";
+        interactionPrompt.textContent = "Press E to pick up key";
+        interactionPrompt.style.display = "block";
+      }
+    }
+  } else if (currentScene === SceneType.DOOR_SCENE) {
+    // Check door
+    const distance = getDistanceToPlayer(doorMesh.position);
+    if (distance < 3) {
+      nearInteractable = true;
+      _currentInteractableType = "door";
+      _currentInteractableName = "Door";
+      if (sceneManager.getAllKeysCollected()) {
+        interactionPrompt.textContent = "Press E to open door";
+      } else {
+        interactionPrompt.textContent = "Press E to try door (locked)";
+      }
+      interactionPrompt.style.display = "block";
     }
   }
 
-  // Otherwise try kicking the sphere
-  const ballPos = sphere.position;
-  const distance = playerPos.distanceTo(ballPos);
-
-  if (distance < 3) {
-    const kickDirection = ballPos.clone().sub(playerPos).normalize();
-    const kickForce = 10;
-    const impulse = new AmmoLib.btVector3(
-      kickDirection.x * kickForce,
-      // to give some lift to the ball
-      kickDirection.y * kickForce + 2,
-      kickDirection.z * kickForce,
-    );
-    console.log("Kicked the sphere!");
-    sphereBody.applyCentralImpulse(impulse);
+  // Hide prompt if not near any interactable
+  if (!nearInteractable) {
+    interactionPrompt.style.display = "none";
   }
 }
 
-// Check for win or loss condition
-function winLoseFunction() {
-  const ballPos = sphere.position;
-  const winWallPosEdit = winWall;
-  const distWin = winWallPosEdit.position.distanceTo(ballPos);
-  const distLose = loseWall.position.distanceTo(ballPos);
+// Interaction logic
+function handleInteraction() {
+  if (!nearInteractable) return;
 
-  if (distWin < 1) {
-    console.log("Win Con");
-  }
-  if (distLose < 1) {
-    console.log("Lose Con");
+  const currentScene = sceneManager.getCurrentScene();
+
+  if (currentScene === SceneType.TEMPLE_ONE) {
+    // Check if player is near Temple 1 key
+    if (temple1Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_ONE)) {
+      console.log("Picked up Temple 1 Key!");
+      sceneManager.collectKey(SceneType.TEMPLE_ONE);
+      temple1Key.visible = false;
+      nearInteractable = false;
+      interactionPrompt.style.display = "none";
+      return;
+    }
+
+    // Ball puzzle interaction
+    const playerPos = getPlayerPosition();
+    const ballPos = sphere.position;
+    const ballDistance = playerPos.distanceTo(ballPos);
+
+    if (ballDistance < 3) {
+      console.log("Kicked the ball!");
+
+      // Apply a kick force to the ball
+      const kickDirection = new THREE.Vector3(
+        ballPos.x - playerPos.x,
+        0,
+        ballPos.z - playerPos.z,
+      ).normalize();
+
+      ballPhysicsBody.activate();
+      ballPhysicsBody.applyCentralImpulse(
+        new AmmoLib.btVector3(
+          kickDirection.x * 5,
+          1,
+          kickDirection.z * 5,
+        ),
+      );
+    }
+  } else if (currentScene === SceneType.TEMPLE_TWO) {
+    // Temple 2 key interaction
+    if (temple2Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_TWO)) {
+      console.log("Picked up Temple 2 Key!");
+      sceneManager.collectKey(SceneType.TEMPLE_TWO);
+      temple2Key.visible = false;
+      nearInteractable = false;
+      interactionPrompt.style.display = "none";
+    }
+  } else if (currentScene === SceneType.TEMPLE_THREE) {
+    // Temple 3 key interaction
+    if (temple3Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_THREE)) {
+      console.log("Picked up Temple 3 Key!");
+      sceneManager.collectKey(SceneType.TEMPLE_THREE);
+      temple3Key.visible = false;
+      nearInteractable = false;
+      interactionPrompt.style.display = "none";
+    }
+  } else if (currentScene === SceneType.DOOR_SCENE) {
+    // Door interaction
+    if (sceneManager.getAllKeysCollected()) {
+      console.log("Door opened with all 3 keys!");
+      doorMesh.visible = false;
+
+      // Remove door physics body
+      physicsWorld.removeRigidBody(doorPhysicsBody);
+      nearInteractable = false;
+      interactionPrompt.style.display = "none";
+    } else {
+      console.log(
+        `Door locked! Need ${3 - sceneManager.getKeyCount()} more key(s).`,
+      );
+
+      // Show door locked message
+      sceneManager.showPuzzleMessage(
+        `Door locked! Need ${3 - sceneManager.getKeyCount()} more key(s).`,
+      );
+    }
   }
 }
 
-// Animation loop
+// Function to show lose message
+function showLoseMessage() {
+  loseMessage.style.display = "block";
+
+  // Hide message after 3 seconds
+  setTimeout(() => {
+    loseMessage.style.display = "none";
+  }, 3000);
+}
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// Animation loop with interaction cooldown
+let interactionCooldown = 0;
+
 function animate() {
   requestAnimationFrame(animate);
+
+  // Update cooldown
+  if (interactionCooldown > 0) {
+    interactionCooldown--;
+  }
+
+  // Check for nearby interactables
+  checkForInteractables();
 
   // Player movement
   const moveForce = 0.5;
@@ -906,11 +1124,10 @@ function animate() {
       );
     }
 
-    // Kick/Interact
-    if (keys.e && controls.isLocked) {
+    // Interact with E key
+    if (keys.e && interactionCooldown === 0 && nearInteractable) {
       handleInteraction();
-      // simple debounce so holding E does not spam
-      keys.e = false;
+      interactionCooldown = 20;
     }
 
     // Spacebar jump
@@ -920,51 +1137,130 @@ function animate() {
     }
   }
 
-  // Win/Lose function call
-  winLoseFunction();
+  // Check if ball hits win wall or lose wall in Temple 1
+  if (!ballHitWinWall && !ballHitLoseWall) {
+    const ballPos = sphere.position;
+    const winWallPos = winWall.position;
+    const loseWallPos = loseWall.position;
+    const distanceToWin = ballPos.distanceTo(winWallPos);
+    const distanceToLose = ballPos.distanceTo(loseWallPos);
+
+    if (distanceToWin < 1.5) {
+      ballHitWinWall = true;
+      console.log("Ball hit the win wall! Temple 1 puzzle solved!");
+
+      // Show Temple 1 key
+      temple1Key.visible = true;
+
+      // Also show Temple 2 and 3 keys for testing
+      temple2Key.visible = true;
+      temple3Key.visible = true;
+
+      // Mark all puzzles as completed for testing
+      sceneManager.completePuzzle(SceneType.TEMPLE_ONE);
+      sceneManager.completePuzzle(SceneType.TEMPLE_TWO);
+      sceneManager.completePuzzle(SceneType.TEMPLE_THREE);
+    } else if (distanceToLose < 1.5) {
+      ballHitLoseWall = true;
+      console.log("Ball hit the lose wall! You lose!");
+
+      // Show lose message UI
+      showLoseMessage();
+
+      // Reset ball position
+      setTimeout(() => {
+        ballPhysicsBody.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
+        ballPhysicsBody.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
+
+        const transform = new AmmoLib.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
+        ballPhysicsBody.setWorldTransform(transform);
+        ballPhysicsBody.getMotionState().setWorldTransform(transform);
+
+        // Reset win/lose flags
+        ballHitWinWall = false;
+        ballHitLoseWall = false;
+
+        console.log("Ball has been reset to starting position");
+      }, 2000);
+    }
+  }
+
+  // Animatation (floating/rotating)
+  const time = Date.now() * 0.001;
+
+  // Temple key animations
+  [temple1Key, temple2Key, temple3Key].forEach((key, index) => {
+    if (key.visible) {
+      key.rotation.y = time;
+      const baseY = index === 0
+        ? temple1KeyPos.y
+        : index === 1
+        ? temple2KeyPos.y
+        : temple3KeyPos.y;
+      key.position.y = baseY + Math.sin(time * 2) * 0.2;
+    }
+  });
+
+  const indicator1Material = keyIndicator1.material as THREE.MeshBasicMaterial;
+  const indicator2Material = keyIndicator2.material as THREE.MeshBasicMaterial;
+  const indicator3Material = keyIndicator3.material as THREE.MeshBasicMaterial;
+
+  if (sceneManager.hasKey(SceneType.TEMPLE_ONE)) {
+    indicator1Material.opacity = 1.0;
+    keyIndicator1.rotation.y = time;
+  }
+  if (sceneManager.hasKey(SceneType.TEMPLE_TWO)) {
+    indicator2Material.opacity = 1.0;
+    keyIndicator2.rotation.y = time;
+  }
+  if (sceneManager.hasKey(SceneType.TEMPLE_THREE)) {
+    indicator3Material.opacity = 1.0;
+    keyIndicator3.rotation.y = time;
+  }
 
   physicsWorld.stepSimulation(1 / 60, 10);
-
-  // shere physics to Three.js
-  const msSphere = sphereBody.getMotionState();
-  if (msSphere) {
-    const tempTransform = new AmmoLib.btTransform();
-    msSphere.getWorldTransform(tempTransform);
-    const origin = tempTransform.getOrigin();
-    sphere.position.set(origin.x(), origin.y(), origin.z());
-  }
 
   // Sync physics to Three.js
   const ms = capsuleBody.getMotionState();
   if (ms) {
     const tempTransform = new AmmoLib.btTransform();
     ms.getWorldTransform(tempTransform);
-
     const origin = tempTransform.getOrigin();
-    const rotation = tempTransform.getRotation();
 
-    capsule.position.set(origin.x(), origin.y(), origin.z());
-    capsule.quaternion.set(
-      rotation.x(),
-      rotation.y(),
-      rotation.z(),
-      rotation.w(),
-    );
+    // Update ALL player capsules with the same position
+    sceneCapsules.forEach((capsule) => {
+      capsule.position.set(origin.x(), origin.y(), origin.z());
+    });
+
+    // Update the camera rig position
+    cameraRig.position.set(origin.x(), origin.y() + 0.9, origin.z());
   }
 
-  cameraRig.position.copy(capsule.position);
-  capsule.rotation.x += 0.01;
-  capsule.rotation.y += 0.01;
+  // Same with mesh
+  physicsObjects.forEach((obj) => {
+    const ms = obj.body.getMotionState();
+    if (ms) {
+      const tempTransform = new AmmoLib.btTransform();
+      ms.getWorldTransform(tempTransform);
+      const origin = tempTransform.getOrigin();
+      const rotation = tempTransform.getRotation();
+
+      obj.mesh.position.set(origin.x(), origin.y(), origin.z());
+      obj.mesh.quaternion.set(
+        rotation.x(),
+        rotation.y(),
+        rotation.z(),
+        rotation.w(),
+      );
+    }
+  });
+
   renderer.render(scene, camera);
 }
 
 animate();
-
-// Expose some objects for debugging in DevTools
-(globalThis as any).capsule = capsule;
-(globalThis as any).sphere = sphere;
-(globalThis as any).keyMesh = keyMesh;
-(globalThis as any).doorMesh = doorMesh;
 
 // Handle window resize
 globalThis.addEventListener("resize", () => {
@@ -972,3 +1268,7 @@ globalThis.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 });
+
+// Debugging
+(globalThis as any).sceneManager = sceneManager;
+(globalThis as any).keys = keys;
