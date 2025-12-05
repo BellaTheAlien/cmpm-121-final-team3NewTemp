@@ -40,7 +40,6 @@ function createPhysicsBox(
   rotationAxis: THREE.Vector3 | null = null,
   rotationAngle: number = 0,
 ) {
-  // Create box shape
   const shape = new AmmoLib.btBoxShape(
     new AmmoLib.btVector3(sizeX / 2, sizeY / 2, sizeZ / 2),
   );
@@ -97,7 +96,6 @@ function createPhysicsBox(
   return body;
 }
 
-// Add ball physics
 function createPhysicsSphere(
   radius: number,
   posX: number,
@@ -153,25 +151,19 @@ class SceneManager {
   private currentScene: SceneType = SceneType.TEMPLE_ONE;
   private scenes: Map<SceneType, THREE.Object3D> = new Map();
 
-  // UI elements
   private sceneIndicator: HTMLDivElement;
   private instructions: HTMLDivElement;
   private inventoryHud: HTMLDivElement;
   private puzzleMessage: HTMLDivElement;
 
-  // Player inventory
   private collectedKeys: Set<SceneType> = new Set();
-
-  // Puzzle completion status
   private puzzleCompleted: Map<SceneType, boolean> = new Map();
 
   constructor() {
-    // Initialize puzzle completion status
     this.puzzleCompleted.set(SceneType.TEMPLE_ONE, false);
     this.puzzleCompleted.set(SceneType.TEMPLE_TWO, false);
     this.puzzleCompleted.set(SceneType.TEMPLE_THREE, false);
 
-    // Scene type UI
     this.sceneIndicator = document.createElement("div");
     this.sceneIndicator.style.position = "fixed";
     this.sceneIndicator.style.top = "10px";
@@ -185,7 +177,6 @@ class SceneManager {
     this.sceneIndicator.style.zIndex = "1000";
     document.body.appendChild(this.sceneIndicator);
 
-    // Instructions UI
     this.instructions = document.createElement("div");
     this.instructions.style.position = "fixed";
     this.instructions.style.bottom = "10px";
@@ -205,7 +196,6 @@ class SceneManager {
     `;
     document.body.appendChild(this.instructions);
 
-    // Inventory UI
     this.inventoryHud = document.createElement("div");
     this.inventoryHud.style.position = "fixed";
     this.inventoryHud.style.top = "10px";
@@ -219,7 +209,6 @@ class SceneManager {
     this.inventoryHud.style.zIndex = "1000";
     document.body.appendChild(this.inventoryHud);
 
-    // Puzzle message UI
     this.puzzleMessage = document.createElement("div");
     this.puzzleMessage.style.position = "fixed";
     this.puzzleMessage.style.top = "50%";
@@ -238,7 +227,6 @@ class SceneManager {
 
     this.updateUI();
 
-    // Setup keyboard listeners for scene switching
     globalThis.addEventListener("keydown", (e) => {
       if (e.key === "1") this.switchScene(SceneType.TEMPLE_ONE);
       else if (e.key === "2") this.switchScene(SceneType.TEMPLE_TWO);
@@ -251,7 +239,6 @@ class SceneManager {
     this.scenes.set(sceneType, sceneObject);
   }
 
-  // Showing/Hiding Scenes
   switchScene(sceneType: SceneType) {
     if (this.currentScene === sceneType) return;
     const currentSceneObj = this.scenes.get(this.currentScene);
@@ -273,8 +260,6 @@ class SceneManager {
   completePuzzle(sceneType: SceneType) {
     this.puzzleCompleted.set(sceneType, true);
     this.updateUI();
-
-    // Show puzzle completion message
     this.showPuzzleMessage(
       `Temple ${sceneType} puzzle solved! Key is now available.`,
     );
@@ -308,8 +293,6 @@ class SceneManager {
   showPuzzleMessage(message: string) {
     this.puzzleMessage.textContent = message;
     this.puzzleMessage.style.display = "block";
-
-    // Hide message after 3 seconds
     setTimeout(() => {
       this.puzzleMessage.style.display = "none";
     }, 3000);
@@ -337,7 +320,6 @@ class SceneManager {
       <strong>Keys Collected:</strong> ${this.collectedKeys.size}/3
     `;
 
-    // Update inventory display
     let inventoryText = "Inventory: ";
     if (this.collectedKeys.size === 0) {
       inventoryText += "Empty";
@@ -357,11 +339,11 @@ class SceneManager {
       Press 1, 2, 3, or 4 to switch scenes<br>
       Current Scene: ${sceneTexts[this.currentScene - 1]}<br>
       Press E to interact with keys and doors<br>
-      Press R to reset the puzzle
+      Press R to reset the puzzle<br>
+      Press T or use Theme button to change theme
     `;
   }
 
-  // Getters so ThemeManager can access UI elements
   getSceneIndicatorElement(): HTMLDivElement {
     return this.sceneIndicator;
   }
@@ -376,18 +358,15 @@ class SceneManager {
   }
 }
 
-// Scene manager
 const sceneManager = new SceneManager();
 
-// Main Scene Container
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202020);
 
-// Separate scene containers for each scene
-const sceneContainer1 = new THREE.Object3D(); // Temple 1 (ball puzzle)
-const sceneContainer2 = new THREE.Object3D(); // Temple 2
-const sceneContainer3 = new THREE.Object3D(); // Temple 3
-const sceneContainer4 = new THREE.Object3D(); // Door scene
+const sceneContainer1 = new THREE.Object3D();
+const sceneContainer2 = new THREE.Object3D();
+const sceneContainer3 = new THREE.Object3D();
+const sceneContainer4 = new THREE.Object3D();
 
 scene.add(sceneContainer1, sceneContainer2, sceneContainer3, sceneContainer4);
 sceneManager.addScene(SceneType.TEMPLE_ONE, sceneContainer1);
@@ -395,7 +374,6 @@ sceneManager.addScene(SceneType.TEMPLE_TWO, sceneContainer2);
 sceneManager.addScene(SceneType.TEMPLE_THREE, sceneContainer3);
 sceneManager.addScene(SceneType.DOOR_SCENE, sceneContainer4);
 
-// Show only scene 1
 sceneContainer1.visible = true;
 sceneContainer2.visible = false;
 sceneContainer3.visible = false;
@@ -409,14 +387,12 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 1.6, 0);
 
-// GLTF Loader
 const loader = new GLTFLoader();
 
 //////////////////////////////////////
 // Scene 1: Temple 1 (Ball Puzzle)
 //////////////////////////////////////
 
-// Light for scene 1
 const scene1Light = new THREE.DirectionalLight(0xffffff, 1);
 scene1Light.position.set(10, 15, 10);
 scene1Light.castShadow = true;
@@ -425,7 +401,6 @@ sceneContainer1.add(scene1Light);
 const scene1Ambient = new THREE.AmbientLight(0xffffff, 0.6);
 sceneContainer1.add(scene1Ambient);
 
-// Load temple 1 model
 loader.load(
   "models/temple/scene.gltf",
   (gltf) => {
@@ -439,14 +414,12 @@ loader.load(
   console.error,
 );
 
-// Ball for puzzle
 const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
 const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
 const sphere = new THREE.Mesh(sphereGeo, sphereMat);
 sphere.position.set(5, 10, 0);
 sceneContainer1.add(sphere);
 
-// Platform slope
 const pillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
 const pillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9c564b });
 const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
@@ -455,7 +428,6 @@ const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
 pillar.rotateOnAxis(pillarAxis, Math.PI / 12);
 sceneContainer1.add(pillar);
 
-// Left slide
 const leftSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
 const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6e1313 });
 const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
@@ -464,7 +436,6 @@ leftSlide.rotateOnAxis(leftSlideAxis, Math.PI / 12);
 leftSlide.position.set(-8, 0, -23.25);
 sceneContainer1.add(leftSlide);
 
-// Right slide
 const rightSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
 const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6e1313 });
 const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
@@ -473,21 +444,18 @@ rightSlide.rotateOnAxis(rightSlideAxis, -Math.PI / 12);
 rightSlide.position.set(-2, 0, -23.25);
 sceneContainer1.add(rightSlide);
 
-// Win Wall (Green)
 const winWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27f538 });
 const winWall = new THREE.Mesh(winWallGeometry, winWallMaterial);
 winWall.position.set(-10, 0, -23);
 sceneContainer1.add(winWall);
 
-// Lose Wall (Red)
 const loseWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
 const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xf52727 });
 const loseWall = new THREE.Mesh(loseWallGeometry, loseWallMaterial);
 loseWall.position.set(0, 0, -23);
 sceneContainer1.add(loseWall);
 
-// Back Wall
 const backWallGeometry = new THREE.BoxGeometry(10, 5, 1);
 const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9c564b });
 const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
@@ -515,7 +483,6 @@ function createKeyMesh(color: number, position: THREE.Vector3): THREE.Group {
   keyGroup.add(teeth2);
   keyGroup.position.copy(position);
 
-  // Add rotation animation
   keyGroup.userData = {
     isKey: true,
     templeType: SceneType.TEMPLE_ONE,
@@ -526,15 +493,11 @@ function createKeyMesh(color: number, position: THREE.Vector3): THREE.Group {
   return keyGroup;
 }
 
-// Create Temple 1 key
 const temple1KeyPos = new THREE.Vector3(-10, 1, -10);
 const temple1Key = createKeyMesh(0xffff44, temple1KeyPos);
-
-// Hide the key -> only show after puzzle is solved
 temple1Key.visible = false;
 sceneContainer1.add(temple1Key);
 
-// Track which wall the ball hit
 let ballHitWinWall = false;
 let ballHitLoseWall = false;
 
@@ -542,7 +505,6 @@ let ballHitLoseWall = false;
 // Scene 2: Temple 2
 ////////////////////////////////
 
-// Light for scene 2
 const scene2Light = new THREE.DirectionalLight(0xffffff, 1);
 scene2Light.position.set(10, 15, 10);
 scene2Light.castShadow = true;
@@ -551,7 +513,6 @@ sceneContainer2.add(scene2Light);
 const scene2Ambient = new THREE.AmbientLight(0xffffff, 0.6);
 sceneContainer2.add(scene2Ambient);
 
-// Load temple 2 model
 loader.load(
   "models/aztec_temple/scene.gltf",
   (gltf) => {
@@ -568,12 +529,9 @@ loader.load(
   console.error,
 );
 
-// Create Temple 2 key
 const temple2KeyPos = new THREE.Vector3(0, 1, 0);
 const temple2Key = createKeyMesh(0xff4444, temple2KeyPos);
 temple2Key.userData.templeType = SceneType.TEMPLE_TWO;
-
-// Hide the key -> only show after puzzle is solved
 temple2Key.visible = false;
 sceneContainer2.add(temple2Key);
 
@@ -581,7 +539,6 @@ sceneContainer2.add(temple2Key);
 // Scene 3: Temple 3
 ////////////////////////////////
 
-// Light for scene 3
 const scene3Light = new THREE.DirectionalLight(0xffffff, 1);
 scene3Light.position.set(10, 15, 10);
 scene3Light.castShadow = true;
@@ -590,7 +547,6 @@ sceneContainer3.add(scene3Light);
 const scene3Ambient = new THREE.AmbientLight(0xffffff, 0.6);
 sceneContainer3.add(scene3Ambient);
 
-// Load temple 3 model
 loader.load(
   "models/forgotten_temple/scene.gltf",
   (gltf) => {
@@ -607,12 +563,9 @@ loader.load(
   console.error,
 );
 
-// Create Temple 3 key
 const temple3KeyPos = new THREE.Vector3(0, 1, 0);
 const temple3Key = createKeyMesh(0x4444ff, temple3KeyPos);
 temple3Key.userData.templeType = SceneType.TEMPLE_THREE;
-
-// Hide the key -> only show after puzzle is solved
 temple3Key.visible = false;
 sceneContainer3.add(temple3Key);
 
@@ -620,7 +573,6 @@ sceneContainer3.add(temple3Key);
 // Scene 4: Door Scene
 ////////////////////////////////
 
-// Light for scene 4
 const scene4Light = new THREE.DirectionalLight(0xffffff, 1);
 scene4Light.position.set(10, 15, 10);
 scene4Light.castShadow = true;
@@ -629,21 +581,11 @@ sceneContainer4.add(scene4Light);
 const scene4Ambient = new THREE.AmbientLight(0xffffff, 0.6);
 sceneContainer4.add(scene4Ambient);
 
-// Door for scene 4
 const doorGeometry = new THREE.BoxGeometry(2, 3, 0.2);
 const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x884422 });
 const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
 doorMesh.position.set(0, 1.5, -5);
 sceneContainer4.add(doorMesh);
-
-// Show which keys have been collected
-const keyIndicator1 = createKeyIndicator(0xff4444, -2, 2);
-const keyIndicator2 = createKeyIndicator(0xffff44, 0, 2);
-const keyIndicator3 = createKeyIndicator(0x4444ff, 2, 2);
-keyIndicator1.userData.isIndicator = true;
-keyIndicator2.userData.isIndicator = true;
-keyIndicator3.userData.isIndicator = true;
-sceneContainer4.add(keyIndicator1, keyIndicator2, keyIndicator3);
 
 function createKeyIndicator(color: number, x: number, y: number): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
@@ -657,12 +599,19 @@ function createKeyIndicator(color: number, x: number, y: number): THREE.Mesh {
   return mesh;
 }
 
+const keyIndicator1 = createKeyIndicator(0xff4444, -2, 2);
+const keyIndicator2 = createKeyIndicator(0xffff44, 0, 2);
+const keyIndicator3 = createKeyIndicator(0x4444ff, 2, 2);
+keyIndicator1.userData.isIndicator = true;
+keyIndicator2.userData.isIndicator = true;
+keyIndicator3.userData.isIndicator = true;
+sceneContainer4.add(keyIndicator1, keyIndicator2, keyIndicator3);
+
 ///////////////////
 // Player Setup
 //////////////////
 
-// Invisible capsule for player body
-const capsuleGeometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1); // We could always change it back if we want
+const capsuleGeometry = new THREE.CapsuleGeometry(0.5, 0.5, 4, 8, 1);
 const capsuleMaterial = new THREE.MeshBasicMaterial({
   color: 0x00ff00,
   transparent: true,
@@ -674,20 +623,17 @@ const capsule2 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
 const capsule3 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
 const capsule4 = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
 
-// Add player to all scene containers
 sceneContainer1.add(capsule1);
 sceneContainer2.add(capsule2);
 sceneContainer3.add(capsule3);
 sceneContainer4.add(capsule4);
 
-// Store capsules in a map
 const sceneCapsules = new Map<SceneType, THREE.Mesh>();
 sceneCapsules.set(SceneType.TEMPLE_ONE, capsule1);
 sceneCapsules.set(SceneType.TEMPLE_TWO, capsule2);
 sceneCapsules.set(SceneType.TEMPLE_THREE, capsule3);
 sceneCapsules.set(SceneType.DOOR_SCENE, capsule4);
 
-// Platform for all scenes
 const platformGeometry = new THREE.BoxGeometry(70, 0.5, 70);
 const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
 
@@ -711,8 +657,7 @@ sceneContainer4.add(platform4);
 // Physics Bodies
 //////////////////////
 
-// Create physics bodies for Scene 1
-createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0); // Main platform
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
 createPhysicsBox(
   5,
   0.25,
@@ -723,7 +668,7 @@ createPhysicsBox(
   0,
   new THREE.Vector3(1, 0, 0),
   Math.PI / 12,
-); // Pillar
+);
 createPhysicsBox(
   7,
   0.25,
@@ -734,7 +679,7 @@ createPhysicsBox(
   0,
   new THREE.Vector3(0, 0, 1),
   Math.PI / 12,
-); // Left slide
+);
 createPhysicsBox(
   7,
   0.25,
@@ -745,12 +690,11 @@ createPhysicsBox(
   0,
   new THREE.Vector3(0, 0, 1),
   -Math.PI / 12,
-); // Right slide
-createPhysicsBox(0.25, 5, 1.65, -10, 0, -23, 0); // Win Wall
-createPhysicsBox(0.25, 5, 1.65, 0, 0, -23, 0); // Lose Wall
-createPhysicsBox(10, 5, 1, -5, 0, -24, 0); // Back Wall
+);
+createPhysicsBox(0.25, 5, 1.65, -10, 0, -23, 0);
+createPhysicsBox(0.25, 5, 1.65, 0, 0, -23, 0);
+createPhysicsBox(10, 5, 1, -5, 0, -24, 0);
 
-// Create physics body for the ball
 const ballPhysicsBody = createPhysicsSphere(
   0.5,
   5,
@@ -764,23 +708,15 @@ const ballPhysicsBody = createPhysicsSphere(
 const physicsObjects: Array<{ mesh: THREE.Mesh; body: any }> = [];
 physicsObjects.push({ mesh: sphere, body: ballPhysicsBody });
 
-// Create physics bodies for Scene 2
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
+createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
 createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
 
-// Create physics bodies for Scene 3
-createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
-
-// Create physics bodies for Scene 4
-createPhysicsBox(70, 0.5, 70, 0, -0.5, 0, 0);
-
-// Door physics body
 const doorPhysicsBody = createPhysicsBox(2, 3, 0.2, 0, 1.5, -5, 0);
 
-// Attach camera to player
 const cameraRig = new THREE.Group();
 scene.add(cameraRig);
 
-// Mouse controls
 const controls = new PointerLockControls(camera, document.body);
 document.addEventListener("click", () => {
   if (!controls.isLocked) {
@@ -788,7 +724,6 @@ document.addEventListener("click", () => {
   }
 });
 
-// Create Ammo rigid body for the player
 const playerShape = new AmmoLib.btCapsuleShape(0.5, 1.8);
 const transform = new AmmoLib.btTransform();
 transform.setIdentity();
@@ -812,7 +747,6 @@ physicsWorld.addRigidBody(capsuleBody);
 
 cameraRig.add(camera);
 
-// Player Input
 const keys = {
   w: false,
   a: false,
@@ -834,18 +768,15 @@ globalThis.addEventListener("keyup", (e) => {
   if (keys[key] !== undefined) keys[key] = false;
 });
 
-// Grounded check
 function isGrounded(): boolean {
   return Math.abs(capsuleBody.getLinearVelocity().y()) < 0.1;
 }
 
-// Apply force helper
 function applyMovementImpulse(fx: number, fy: number, fz: number) {
   capsuleBody.activate();
   capsuleBody.applyCentralImpulse(new AmmoLib.btVector3(fx, fy, fz));
 }
 
-// Get player position
 function getPlayerPosition(): THREE.Vector3 {
   const ms = capsuleBody.getMotionState();
   if (ms) {
@@ -858,10 +789,9 @@ function getPlayerPosition(): THREE.Vector3 {
 }
 
 ///////////////////////////////
-// UI Internaction System
+// UI Interaction System
 ///////////////////////////////
 
-// interaction prompt UI
 const interactionPrompt = document.createElement("div");
 interactionPrompt.style.position = "fixed";
 interactionPrompt.style.bottom = "100px";
@@ -878,7 +808,6 @@ interactionPrompt.style.zIndex = "1000";
 interactionPrompt.style.display = "none";
 document.body.appendChild(interactionPrompt);
 
-// lose message UI
 const loseMessage = document.createElement("div");
 loseMessage.style.position = "fixed";
 loseMessage.style.top = "50%";
@@ -898,18 +827,15 @@ loseMessage.style.display = "none";
 loseMessage.textContent = "YOU LOSE! WRONG WALL!";
 document.body.appendChild(loseMessage);
 
-// Track if player is near an interactable object
 let nearInteractable = false;
 let _currentInteractableType = "";
 let _currentInteractableName = "";
 
-// Check distance to object helper
 function getDistanceToPlayer(objectPos: THREE.Vector3): number {
   const playerPos = getPlayerPosition();
   return playerPos.distanceTo(objectPos);
 }
 
-// Check for nearby interactables
 function checkForInteractables() {
   const currentScene = sceneManager.getCurrentScene();
 
@@ -929,7 +855,6 @@ function checkForInteractables() {
       }
     }
 
-    // Check ball
     if (!ballHitWinWall && !ballHitLoseWall) {
       const distance = getDistanceToPlayer(sphere.position);
       if (distance < 3) {
@@ -941,7 +866,6 @@ function checkForInteractables() {
       }
     }
   } else if (currentScene === SceneType.TEMPLE_TWO) {
-    // Check Temple 2 key
     if (temple2Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_TWO)) {
       const distance = getDistanceToPlayer(temple2Key.position);
       if (distance < 3) {
@@ -953,7 +877,6 @@ function checkForInteractables() {
       }
     }
   } else if (currentScene === SceneType.TEMPLE_THREE) {
-    // Check Temple 3 key
     if (temple3Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_THREE)) {
       const distance = getDistanceToPlayer(temple3Key.position);
       if (distance < 3) {
@@ -965,7 +888,6 @@ function checkForInteractables() {
       }
     }
   } else if (currentScene === SceneType.DOOR_SCENE) {
-    // Check door
     const distance = getDistanceToPlayer(doorMesh.position);
     if (distance < 3) {
       nearInteractable = true;
@@ -980,20 +902,17 @@ function checkForInteractables() {
     }
   }
 
-  // Hide prompt if not near any interactable
   if (!nearInteractable) {
     interactionPrompt.style.display = "none";
   }
 }
 
-// Interaction logic
 function handleInteraction() {
   if (!nearInteractable) return;
 
   const currentScene = sceneManager.getCurrentScene();
 
   if (currentScene === SceneType.TEMPLE_ONE) {
-    // Check if player is near Temple 1 key
     if (temple1Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_ONE)) {
       console.log("Picked up Temple 1 Key!");
       sceneManager.collectKey(SceneType.TEMPLE_ONE);
@@ -1003,7 +922,6 @@ function handleInteraction() {
       return;
     }
 
-    // Ball puzzle interaction
     const playerPos = getPlayerPosition();
     const ballPos = sphere.position;
     const ballDistance = playerPos.distanceTo(ballPos);
@@ -1011,7 +929,6 @@ function handleInteraction() {
     if (ballDistance < 3) {
       console.log("Kicked the ball!");
 
-      // Apply a kick force to the ball
       const kickDirection = new THREE.Vector3(
         ballPos.x - playerPos.x,
         0,
@@ -1028,7 +945,6 @@ function handleInteraction() {
       );
     }
   } else if (currentScene === SceneType.TEMPLE_TWO) {
-    // Temple 2 key interaction
     if (temple2Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_TWO)) {
       console.log("Picked up Temple 2 Key!");
       sceneManager.collectKey(SceneType.TEMPLE_TWO);
@@ -1037,7 +953,6 @@ function handleInteraction() {
       interactionPrompt.style.display = "none";
     }
   } else if (currentScene === SceneType.TEMPLE_THREE) {
-    // Temple 3 key interaction
     if (temple3Key.visible && !sceneManager.hasKey(SceneType.TEMPLE_THREE)) {
       console.log("Picked up Temple 3 Key!");
       sceneManager.collectKey(SceneType.TEMPLE_THREE);
@@ -1046,12 +961,9 @@ function handleInteraction() {
       interactionPrompt.style.display = "none";
     }
   } else if (currentScene === SceneType.DOOR_SCENE) {
-    // Door interaction
     if (sceneManager.getAllKeysCollected()) {
       console.log("Door opened with all 3 keys!");
       doorMesh.visible = false;
-
-      // Remove door physics body
       physicsWorld.removeRigidBody(doorPhysicsBody);
       nearInteractable = false;
       interactionPrompt.style.display = "none";
@@ -1059,8 +971,6 @@ function handleInteraction() {
       console.log(
         `Door locked! Need ${3 - sceneManager.getKeyCount()} more key(s).`,
       );
-
-      // Show door locked message
       sceneManager.showPuzzleMessage(
         `Door locked! Need ${3 - sceneManager.getKeyCount()} more key(s).`,
       );
@@ -1068,26 +978,22 @@ function handleInteraction() {
   }
 }
 
-// Function to show lose message
 function showLoseMessage() {
   loseMessage.style.display = "block";
-
-  // Hide message after 3 seconds
   setTimeout(() => {
     loseMessage.style.display = "none";
   }, 3000);
 }
 
-// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-//////////////////////////////////
+///////////////////////////////
 // THEME SYSTEM
-//////////////////////////////////
+///////////////////////////////
 
 enum ThemeType {
   LIGHT = "light",
@@ -1132,10 +1038,6 @@ class ThemeManager {
     }
   }
 
-  getTheme() {
-    return this.currentTheme;
-  }
-
   applyTheme(theme: ThemeType) {
     this.currentTheme = theme;
 
@@ -1151,7 +1053,6 @@ class ThemeManager {
         this.uiTextColor = "black";
         lightFactor = 1.0;
         break;
-
       case ThemeType.DARK:
         bgColor = 0x101010;
         clearColor = 0x101010;
@@ -1159,11 +1060,10 @@ class ThemeManager {
         this.uiTextColor = "white";
         lightFactor = 0.7;
         break;
-
       case ThemeType.ACCESSIBLE:
         bgColor = 0x00334d;
         clearColor = 0x00334d;
-        this.uiBackground = "rgba(255,255,0,0.85)";
+        this.uiBackground = "rgba(255,255,0,0.9)";
         this.uiTextColor = "black";
         lightFactor = 1.2;
         break;
@@ -1207,7 +1107,6 @@ class ThemeManager {
 const themeManager = new ThemeManager(scene, renderer);
 (globalThis as any).themeManager = themeManager;
 
-// register UI with theme system
 themeManager.registerUIElement(sceneManager.getSceneIndicatorElement());
 themeManager.registerUIElement(sceneManager.getInstructionsElement());
 themeManager.registerUIElement(sceneManager.getInventoryHudElement());
@@ -1215,7 +1114,6 @@ themeManager.registerUIElement(sceneManager.getPuzzleMessageElement());
 themeManager.registerUIElement(interactionPrompt);
 themeManager.registerUIElement(loseMessage);
 
-// register lights with theme system
 themeManager.registerLight(scene1Light);
 themeManager.registerLight(scene1Ambient);
 themeManager.registerLight(scene2Light);
@@ -1225,7 +1123,6 @@ themeManager.registerLight(scene3Ambient);
 themeManager.registerLight(scene4Light);
 themeManager.registerLight(scene4Ambient);
 
-// Theme button UI
 const themeButton = document.createElement("button");
 themeButton.textContent = "Theme";
 themeButton.style.position = "fixed";
@@ -1242,32 +1139,143 @@ themeManager.registerUIElement(themeButton);
 
 themeButton.onclick = () => themeManager.cycleTheme();
 
-// Keyboard toggle for theme
 globalThis.addEventListener("keydown", (e) => {
   if (e.key === "t" || e.key === "T") {
     themeManager.cycleTheme();
   }
 });
 
-// Animation loop with interaction cooldown
+///////////////////////////////
+// TOUCH UI ELEMENTS
+///////////////////////////////
+
+const touchJoystick = document.createElement("div");
+touchJoystick.style.position = "fixed";
+touchJoystick.style.left = "40px";
+touchJoystick.style.bottom = "40px";
+touchJoystick.style.width = "140px";
+touchJoystick.style.height = "140px";
+touchJoystick.style.borderRadius = "70px";
+touchJoystick.style.background = "rgba(255,255,255,0.05)";
+touchJoystick.style.border = "2px solid rgba(255,255,255,0.25)";
+touchJoystick.style.zIndex = "2000";
+touchJoystick.style.touchAction = "none";
+document.body.appendChild(touchJoystick);
+
+const touchInteract = document.createElement("button");
+touchInteract.textContent = "E";
+touchInteract.style.position = "fixed";
+touchInteract.style.right = "40px";
+touchInteract.style.bottom = "40px";
+touchInteract.style.padding = "25px 35px";
+touchInteract.style.fontSize = "28px";
+touchInteract.style.borderRadius = "12px";
+touchInteract.style.background = "rgba(255,255,255,0.5)";
+touchInteract.style.color = "black";
+touchInteract.style.zIndex = "2000";
+touchInteract.style.touchAction = "none";
+document.body.appendChild(touchInteract);
+
+themeManager.registerUIElement(touchJoystick);
+themeManager.registerUIElement(touchInteract);
+
+///////////////////////////////
+// TOUCH MOVEMENT & LOOK
+///////////////////////////////
+
+let joyStart: { x: number; y: number } | null = null;
+let joyVector = { x: 0, y: 0 };
+let touchLookActive = false;
+const lastLook = { x: 0, y: 0 };
+let touchAnyActive = false;
+
+touchJoystick.addEventListener("touchstart", (e) => {
+  touchAnyActive = true;
+  joyStart = {
+    x: e.touches[0].clientX,
+    y: e.touches[0].clientY,
+  };
+});
+
+touchJoystick.addEventListener("touchmove", (e) => {
+  if (!joyStart) return;
+
+  const dx = e.touches[0].clientX - joyStart.x;
+  const dy = e.touches[0].clientY - joyStart.y;
+
+  joyVector.x = THREE.MathUtils.clamp(dx / 60, -1, 1);
+  joyVector.y = THREE.MathUtils.clamp(dy / 60, -1, 1);
+});
+
+touchJoystick.addEventListener("touchend", () => {
+  joyVector = { x: 0, y: 0 };
+  joyStart = null;
+});
+
+document.addEventListener("touchstart", (e) => {
+  touchAnyActive = true;
+  if (e.touches[0].clientX > globalThis.innerWidth * 0.5) {
+    touchLookActive = true;
+    lastLook.x = e.touches[0].clientX;
+    lastLook.y = e.touches[0].clientY;
+  }
+});
+
+document.addEventListener("touchmove", (e) => {
+  if (!touchLookActive) return;
+
+  const touch = e.touches[0];
+  const dx = touch.clientX - lastLook.x;
+  const dy = touch.clientY - lastLook.y;
+
+  // FIXED: PointerLockControls typing, use .object instead of .getObject()
+  controls.object.rotation.y -= dx * 0.003;
+
+  camera.rotation.x -= dy * 0.003;
+  camera.rotation.x = Math.max(
+    -Math.PI / 2,
+    Math.min(Math.PI / 2, camera.rotation.x),
+  );
+
+  lastLook.x = touch.clientX;
+  lastLook.y = touch.clientY;
+});
+
+document.addEventListener("touchend", (e) => {
+  if (e.touches.length === 0) {
+    touchLookActive = false;
+    touchAnyActive = false;
+    joyVector = { x: 0, y: 0 };
+    joyStart = null;
+  }
+});
+
+touchInteract.addEventListener("touchstart", () => {
+  keys.e = true;
+  setTimeout(() => {
+    keys.e = false;
+  }, 150);
+});
+
+///////////////////////////////
+// Animation loop
+///////////////////////////////
+
 let interactionCooldown = 0;
 
 function animate() {
   requestAnimationFrame(animate);
 
-  // Update cooldown
   if (interactionCooldown > 0) {
     interactionCooldown--;
   }
 
-  // Check for nearby interactables
   checkForInteractables();
 
-  // Player movement
   const moveForce = 0.5;
   const jumpForce = 8;
 
-  if (controls.isLocked) {
+  if (controls.isLocked || touchAnyActive) {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     direction.y = 0;
@@ -1304,32 +1312,57 @@ function animate() {
       );
     }
 
-    // Interact with E key
+    if (joyVector.y < -0.25) {
+      applyMovementImpulse(
+        direction.x * moveForce,
+        0,
+        direction.z * moveForce,
+      );
+    }
+    if (joyVector.y > 0.25) {
+      applyMovementImpulse(
+        -direction.x * moveForce,
+        0,
+        -direction.z * moveForce,
+      );
+    }
+    if (joyVector.x < -0.25) {
+      applyMovementImpulse(
+        right.x * moveForce,
+        0,
+        right.z * moveForce,
+      );
+    }
+    if (joyVector.x > 0.25) {
+      applyMovementImpulse(
+        -right.x * moveForce,
+        0,
+        -right.z * moveForce,
+      );
+    }
+
     if (keys.e && interactionCooldown === 0 && nearInteractable) {
       handleInteraction();
       interactionCooldown = 20;
     }
 
-    // Spacebar jump
     if (keys[" "] && isGrounded()) {
       capsuleBody.activate();
       applyMovementImpulse(0, jumpForce, 0);
     }
 
-    // r key to reset the puzzles in any scene
     if (keys.r) {
       console.log("Resetting the puzzles");
       if (sceneManager.getCurrentScene() === SceneType.TEMPLE_ONE) {
         resetTemple1Puzzle();
       } else if (sceneManager.getCurrentScene() === SceneType.TEMPLE_TWO) {
-        // call a reset function for this scene puzzle
+        // future reset
       } else if (sceneManager.getCurrentScene() === SceneType.TEMPLE_THREE) {
-        // call a reset function for this scene puzzle
+        // future reset
       }
     }
   }
 
-  // Check if ball hits win wall or lose wall in Temple 1
   if (!ballHitWinWall && !ballHitLoseWall) {
     const ballPos = sphere.position;
     const winWallPos = winWall.position;
@@ -1341,14 +1374,10 @@ function animate() {
       ballHitWinWall = true;
       console.log("Ball hit the win wall! Temple 1 puzzle solved!");
 
-      // Show Temple 1 key
       temple1Key.visible = true;
-
-      // Also show Temple 2 and 3 keys for testing
       temple2Key.visible = true;
       temple3Key.visible = true;
 
-      // Mark all puzzles as completed for testing
       sceneManager.completePuzzle(SceneType.TEMPLE_ONE);
       sceneManager.completePuzzle(SceneType.TEMPLE_TWO);
       sceneManager.completePuzzle(SceneType.TEMPLE_THREE);
@@ -1356,27 +1385,22 @@ function animate() {
       ballHitLoseWall = true;
       console.log("Ball hit the lose wall! You lose!");
 
-      // Show lose message UI
       showLoseMessage();
-
-      // Resets the ball puzzle
       resetTemple1Puzzle();
     }
   }
 
   function resetTemple1Puzzle() {
-    // Reset ball position
     setTimeout(() => {
       ballPhysicsBody.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
       ballPhysicsBody.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
 
-      const transform = new AmmoLib.btTransform();
-      transform.setIdentity();
-      transform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
-      ballPhysicsBody.setWorldTransform(transform);
-      ballPhysicsBody.getMotionState().setWorldTransform(transform);
+      const t = new AmmoLib.btTransform();
+      t.setIdentity();
+      t.setOrigin(new AmmoLib.btVector3(5, 10, 0));
+      ballPhysicsBody.setWorldTransform(t);
+      ballPhysicsBody.getMotionState().setWorldTransform(t);
 
-      // Reset win/lose flags
       ballHitWinWall = false;
       ballHitLoseWall = false;
 
@@ -1384,10 +1408,8 @@ function animate() {
     }, 2000);
   }
 
-  // Animatation (floating/rotating)
   const time = Date.now() * 0.001;
 
-  // Temple key animations
   [temple1Key, temple2Key, temple3Key].forEach((key, index) => {
     if (key.visible) {
       key.rotation.y = time;
@@ -1419,28 +1441,24 @@ function animate() {
 
   physicsWorld.stepSimulation(1 / 60, 10);
 
-  // Sync physics to Three.js
   const ms = capsuleBody.getMotionState();
   if (ms) {
     const tempTransform = new AmmoLib.btTransform();
     ms.getWorldTransform(tempTransform);
     const origin = tempTransform.getOrigin();
 
-    // Update ALL player capsules with the same position
     sceneCapsules.forEach((capsule) => {
       capsule.position.set(origin.x(), origin.y(), origin.z());
     });
 
-    // Update the camera rig position
     cameraRig.position.set(origin.x(), origin.y() + 0.9, origin.z());
   }
 
-  // Same with mesh
   physicsObjects.forEach((obj) => {
-    const ms = obj.body.getMotionState();
-    if (ms) {
+    const ms2 = obj.body.getMotionState();
+    if (ms2) {
       const tempTransform = new AmmoLib.btTransform();
-      ms.getWorldTransform(tempTransform);
+      ms2.getWorldTransform(tempTransform);
       const origin = tempTransform.getOrigin();
       const rotation = tempTransform.getRotation();
 
@@ -1459,13 +1477,11 @@ function animate() {
 
 animate();
 
-// Handle window resize
 globalThis.addEventListener("resize", () => {
   camera.aspect = globalThis.innerWidth / globalThis.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 });
 
-// Debugging
 (globalThis as any).sceneManager = sceneManager;
 (globalThis as any).keys = keys;
