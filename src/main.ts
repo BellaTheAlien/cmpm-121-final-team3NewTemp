@@ -356,9 +356,23 @@ class SceneManager {
     this.instructions.innerHTML = `
       Press 1, 2, 3, or 4 to switch scenes<br>
       Current Scene: ${sceneTexts[this.currentScene - 1]}<br>
-      Press E to interact with keys and doors
+      Press E to interact with keys and doors<br>
       Press R to reset the puzzle
     `;
+  }
+
+  // Getters so ThemeManager can access UI elements
+  getSceneIndicatorElement(): HTMLDivElement {
+    return this.sceneIndicator;
+  }
+  getInstructionsElement(): HTMLDivElement {
+    return this.instructions;
+  }
+  getInventoryHudElement(): HTMLDivElement {
+    return this.inventoryHud;
+  }
+  getPuzzleMessageElement(): HTMLDivElement {
+    return this.puzzleMessage;
   }
 }
 
@@ -434,7 +448,7 @@ sceneContainer1.add(sphere);
 
 // Platform slope
 const pillarGeometry = new THREE.BoxGeometry(5, 0.25, 5);
-const pillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const pillarMaterial = new THREE.MeshBasicMaterial({ color: 0x9c564b });
 const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
 pillar.position.set(-5, 0, -20);
 const pillarAxis = new THREE.Vector3(1, 0, 0).normalize();
@@ -443,7 +457,7 @@ sceneContainer1.add(pillar);
 
 // Left slide
 const leftSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
-const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
+const leftSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6e1313 });
 const leftSlide = new THREE.Mesh(leftSlideGeometry, leftSlideMaterial);
 const leftSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 leftSlide.rotateOnAxis(leftSlideAxis, Math.PI / 12);
@@ -452,7 +466,7 @@ sceneContainer1.add(leftSlide);
 
 // Right slide
 const rightSlideGeometry = new THREE.BoxGeometry(7, 0.25, 1.65);
-const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6E1313 });
+const rightSlideMaterial = new THREE.MeshBasicMaterial({ color: 0x6e1313 });
 const rightSlide = new THREE.Mesh(rightSlideGeometry, rightSlideMaterial);
 const rightSlideAxis = new THREE.Vector3(0, 0, 1).normalize();
 rightSlide.rotateOnAxis(rightSlideAxis, -Math.PI / 12);
@@ -461,21 +475,21 @@ sceneContainer1.add(rightSlide);
 
 // Win Wall (Green)
 const winWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
-const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27F538 });
+const winWallMaterial = new THREE.MeshBasicMaterial({ color: 0x27f538 });
 const winWall = new THREE.Mesh(winWallGeometry, winWallMaterial);
 winWall.position.set(-10, 0, -23);
 sceneContainer1.add(winWall);
 
 // Lose Wall (Red)
 const loseWallGeometry = new THREE.BoxGeometry(0.25, 5, 1.65);
-const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xF52727 });
+const loseWallMaterial = new THREE.MeshBasicMaterial({ color: 0xf52727 });
 const loseWall = new THREE.Mesh(loseWallGeometry, loseWallMaterial);
 loseWall.position.set(0, 0, -23);
 sceneContainer1.add(loseWall);
 
 // Back Wall
 const backWallGeometry = new THREE.BoxGeometry(10, 5, 1);
-const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9C564B });
+const backWallMaterial = new THREE.MeshBasicMaterial({ color: 0x9c564b });
 const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
 backWall.position.set(-5, 0, -24);
 sceneContainer1.add(backWall);
@@ -603,7 +617,7 @@ temple3Key.visible = false;
 sceneContainer3.add(temple3Key);
 
 ////////////////////////////////
-// Scene 4: Dore Scene
+// Scene 4: Door Scene
 ////////////////////////////////
 
 // Light for scene 4
@@ -819,11 +833,6 @@ globalThis.addEventListener("keyup", (e) => {
   const key = e.key.toLowerCase() as keyof typeof keys;
   if (keys[key] !== undefined) keys[key] = false;
 });
-
-//globalThis.addEventListener("keydown", (r) => {
-//const key = r.key.toLocaleLowerCase() as keyof typeof keys;
-//if (keys[key] !== undefined) keys[key] = false;
-//});
 
 // Grounded check
 function isGrounded(): boolean {
@@ -1075,6 +1084,170 @@ renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
+
+//////////////////////////////////
+// THEME SYSTEM
+//////////////////////////////////
+
+enum ThemeType {
+  LIGHT = "light",
+  DARK = "dark",
+  ACCESSIBLE = "accessible",
+}
+
+class ThemeManager {
+  private currentTheme: ThemeType = ThemeType.LIGHT;
+  private uiElements: HTMLElement[] = [];
+  private lights: THREE.Light[] = [];
+  private uiBackground = "rgba(0,0,0,0.7)";
+  private uiTextColor = "white";
+
+  constructor(
+    private sceneRef: THREE.Scene,
+    private rendererRef: THREE.WebGLRenderer,
+  ) {
+    this.applyTheme(this.currentTheme);
+  }
+
+  registerUIElement(el: HTMLElement) {
+    this.uiElements.push(el);
+    this.updateUIStyles();
+  }
+
+  registerLight(light: THREE.Light) {
+    if (light.userData.baseIntensity === undefined) {
+      light.userData.baseIntensity = light.intensity;
+    }
+    this.lights.push(light);
+    this.updateLights();
+  }
+
+  cycleTheme() {
+    if (this.currentTheme === ThemeType.LIGHT) {
+      this.applyTheme(ThemeType.DARK);
+    } else if (this.currentTheme === ThemeType.DARK) {
+      this.applyTheme(ThemeType.ACCESSIBLE);
+    } else {
+      this.applyTheme(ThemeType.LIGHT);
+    }
+  }
+
+  getTheme() {
+    return this.currentTheme;
+  }
+
+  applyTheme(theme: ThemeType) {
+    this.currentTheme = theme;
+
+    let bgColor = 0x202020;
+    let clearColor = 0x202020;
+    let lightFactor = 1.0;
+
+    switch (theme) {
+      case ThemeType.LIGHT:
+        bgColor = 0xf0f0f0;
+        clearColor = 0xf0f0f0;
+        this.uiBackground = "rgba(255,255,255,0.9)";
+        this.uiTextColor = "black";
+        lightFactor = 1.0;
+        break;
+
+      case ThemeType.DARK:
+        bgColor = 0x101010;
+        clearColor = 0x101010;
+        this.uiBackground = "rgba(0,0,0,0.8)";
+        this.uiTextColor = "white";
+        lightFactor = 0.7;
+        break;
+
+      case ThemeType.ACCESSIBLE:
+        bgColor = 0x00334d;
+        clearColor = 0x00334d;
+        this.uiBackground = "rgba(255,255,0,0.85)";
+        this.uiTextColor = "black";
+        lightFactor = 1.2;
+        break;
+    }
+
+    this.sceneRef.background = new THREE.Color(bgColor);
+    this.rendererRef.setClearColor(clearColor, 1);
+    this.updateUIStyles();
+    this.updateLights(lightFactor);
+  }
+
+  private updateUIStyles() {
+    this.uiElements.forEach((el) => {
+      el.style.background = this.uiBackground;
+      el.style.color = this.uiTextColor;
+    });
+  }
+
+  private updateLights(factor?: number) {
+    let lightFactor = factor;
+    if (lightFactor === undefined) {
+      switch (this.currentTheme) {
+        case ThemeType.LIGHT:
+          lightFactor = 1.0;
+          break;
+        case ThemeType.DARK:
+          lightFactor = 0.7;
+          break;
+        case ThemeType.ACCESSIBLE:
+          lightFactor = 1.2;
+          break;
+      }
+    }
+    this.lights.forEach((light) => {
+      const base = light.userData.baseIntensity ?? light.intensity;
+      light.intensity = base * (lightFactor ?? 1.0);
+    });
+  }
+}
+
+const themeManager = new ThemeManager(scene, renderer);
+(globalThis as any).themeManager = themeManager;
+
+// register UI with theme system
+themeManager.registerUIElement(sceneManager.getSceneIndicatorElement());
+themeManager.registerUIElement(sceneManager.getInstructionsElement());
+themeManager.registerUIElement(sceneManager.getInventoryHudElement());
+themeManager.registerUIElement(sceneManager.getPuzzleMessageElement());
+themeManager.registerUIElement(interactionPrompt);
+themeManager.registerUIElement(loseMessage);
+
+// register lights with theme system
+themeManager.registerLight(scene1Light);
+themeManager.registerLight(scene1Ambient);
+themeManager.registerLight(scene2Light);
+themeManager.registerLight(scene2Ambient);
+themeManager.registerLight(scene3Light);
+themeManager.registerLight(scene3Ambient);
+themeManager.registerLight(scene4Light);
+themeManager.registerLight(scene4Ambient);
+
+// Theme button UI
+const themeButton = document.createElement("button");
+themeButton.textContent = "Theme";
+themeButton.style.position = "fixed";
+themeButton.style.bottom = "10px";
+themeButton.style.right = "10px";
+themeButton.style.padding = "10px 14px";
+themeButton.style.fontSize = "14px";
+themeButton.style.borderRadius = "6px";
+themeButton.style.border = "none";
+themeButton.style.cursor = "pointer";
+themeButton.style.zIndex = "1000";
+document.body.appendChild(themeButton);
+themeManager.registerUIElement(themeButton);
+
+themeButton.onclick = () => themeManager.cycleTheme();
+
+// Keyboard toggle for theme
+globalThis.addEventListener("keydown", (e) => {
+  if (e.key === "t" || e.key === "T") {
+    themeManager.cycleTheme();
+  }
+});
 
 // Animation loop with interaction cooldown
 let interactionCooldown = 0;
