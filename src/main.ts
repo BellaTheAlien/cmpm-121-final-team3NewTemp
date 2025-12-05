@@ -357,6 +357,7 @@ class SceneManager {
       Press 1, 2, 3, or 4 to switch scenes<br>
       Current Scene: ${sceneTexts[this.currentScene - 1]}<br>
       Press E to interact with keys and doors
+      Press R to reset the puzzle
     `;
   }
 }
@@ -804,6 +805,7 @@ const keys = {
   s: false,
   d: false,
   e: false,
+  r: false,
   " ": false,
   space: false,
 };
@@ -817,6 +819,11 @@ globalThis.addEventListener("keyup", (e) => {
   const key = e.key.toLowerCase() as keyof typeof keys;
   if (keys[key] !== undefined) keys[key] = false;
 });
+
+//globalThis.addEventListener("keydown", (r) => {
+//const key = r.key.toLocaleLowerCase() as keyof typeof keys;
+//if (keys[key] !== undefined) keys[key] = false;
+//});
 
 // Grounded check
 function isGrounded(): boolean {
@@ -1135,6 +1142,18 @@ function animate() {
       capsuleBody.activate();
       applyMovementImpulse(0, jumpForce, 0);
     }
+
+    // r key to reset the puzzles in any scene
+    if (keys.r) {
+      console.log("Resetting the puzzles");
+      if (sceneManager.getCurrentScene() === SceneType.TEMPLE_ONE) {
+        resetTemple1Puzzle();
+      } else if (sceneManager.getCurrentScene() === SceneType.TEMPLE_TWO) {
+        // call a reset function for this scene puzzle
+      } else if (sceneManager.getCurrentScene() === SceneType.TEMPLE_THREE) {
+        // call a reset function for this scene puzzle
+      }
+    }
   }
 
   // Check if ball hits win wall or lose wall in Temple 1
@@ -1167,24 +1186,29 @@ function animate() {
       // Show lose message UI
       showLoseMessage();
 
-      // Reset ball position
-      setTimeout(() => {
-        ballPhysicsBody.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
-        ballPhysicsBody.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
-
-        const transform = new AmmoLib.btTransform();
-        transform.setIdentity();
-        transform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
-        ballPhysicsBody.setWorldTransform(transform);
-        ballPhysicsBody.getMotionState().setWorldTransform(transform);
-
-        // Reset win/lose flags
-        ballHitWinWall = false;
-        ballHitLoseWall = false;
-
-        console.log("Ball has been reset to starting position");
-      }, 2000);
+      // Resets the ball puzzle
+      resetTemple1Puzzle();
     }
+  }
+
+  function resetTemple1Puzzle() {
+    // Reset ball position
+    setTimeout(() => {
+      ballPhysicsBody.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
+      ballPhysicsBody.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
+
+      const transform = new AmmoLib.btTransform();
+      transform.setIdentity();
+      transform.setOrigin(new AmmoLib.btVector3(5, 10, 0));
+      ballPhysicsBody.setWorldTransform(transform);
+      ballPhysicsBody.getMotionState().setWorldTransform(transform);
+
+      // Reset win/lose flags
+      ballHitWinWall = false;
+      ballHitLoseWall = false;
+
+      console.log("Ball has been reset to starting position");
+    }, 2000);
   }
 
   // Animatation (floating/rotating)
