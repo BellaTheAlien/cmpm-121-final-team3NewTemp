@@ -1179,8 +1179,23 @@ touchInteract.style.zIndex = "2000";
 touchInteract.style.touchAction = "none";
 document.body.appendChild(touchInteract);
 
+const touchRestart = document.createElement("button");
+touchRestart.textContent = "R";
+touchRestart.style.position = "fixed";
+touchRestart.style.right = "40px";
+touchRestart.style.bottom = "150px";
+touchRestart.style.padding = "25px 35px";
+touchRestart.style.fontSize = "28px";
+touchRestart.style.borderRadius = "12px";
+touchRestart.style.background = "rgba(255,255,255,0.5)";
+touchRestart.style.color = "black";
+touchRestart.style.zIndex = "2000";
+touchRestart.style.touchAction = "none";
+document.body.appendChild(touchRestart);
+
 themeManager.registerUIElement(touchJoystick);
 themeManager.registerUIElement(touchInteract);
+themeManager.registerUIElement(touchRestart);
 
 ///////////////////////////////
 // TOUCH MOVEMENT & LOOK
@@ -1257,6 +1272,13 @@ touchInteract.addEventListener("touchstart", () => {
   keys.e = true;
   setTimeout(() => {
     keys.e = false;
+  }, 150);
+});
+
+touchRestart.addEventListener("touchstart", () => {
+  keys.r = true;
+  setTimeout(() => {
+    keys.r = false;
   }, 150);
 });
 
@@ -1483,7 +1505,7 @@ animate();
 globalThis.addEventListener("resize", () => {
   camera.aspect = globalThis.innerWidth / globalThis.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
+  renderer.setSize(globalThis.innerWidth * 0.98, globalThis.innerHeight * 0.98);
 });
 
 (globalThis as any).sceneManager = sceneManager;
