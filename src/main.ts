@@ -967,6 +967,9 @@ function handleInteraction() {
       physicsWorld.removeRigidBody(doorPhysicsBody);
       nearInteractable = false;
       interactionPrompt.style.display = "none";
+      sceneManager.showPuzzleMessage(
+        `Door Unlocked! You Win!`,
+      );
     } else {
       console.log(
         `Door locked! Need ${3 - sceneManager.getKeyCount()} more key(s).`,
@@ -1430,12 +1433,12 @@ function animate() {
       temple2Key.visible = true;
       temple3Key.visible = true;
 
-      sceneManager.completePuzzle(SceneType.TEMPLE_ONE);
       sceneManager.completePuzzle(SceneType.TEMPLE_TWO);
       sceneManager.completePuzzle(SceneType.TEMPLE_THREE);
+      sceneManager.completePuzzle(SceneType.TEMPLE_ONE);
     } else if (distanceToLose < 1.5) {
       ballHitLoseWall = true;
-      console.log("Ball hit the lose wall! You lose!");
+      console.log("Ball hit the wrong wall! You lose!");
 
       showLoseMessage();
       resetTemple1Puzzle();
