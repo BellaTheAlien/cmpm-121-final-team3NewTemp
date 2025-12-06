@@ -1265,7 +1265,7 @@ document.addEventListener("touchmove", (e) => {
   const dy = touch.clientY - lastLook.y;
 
   // FIXED: PointerLockControls typing, use .object instead of .getObject()
-  controls.object.rotation.y -= dx;
+  controls.object.rotation.y -= dx * 0.0003;
 
   camera.rotation.x -= dy * 0.003;
   camera.rotation.x = Math.max(
