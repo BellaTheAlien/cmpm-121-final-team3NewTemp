@@ -986,7 +986,10 @@ function showLoseMessage() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
+renderer.setSize(
+  (globalThis.innerWidth) * 0.98,
+  (globalThis.innerHeight) * 0.98,
+);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
