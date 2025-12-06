@@ -1113,6 +1113,21 @@ class ThemeManager {
 const themeManager = new ThemeManager(scene, renderer);
 (globalThis as any).themeManager = themeManager;
 
+//Change Theme to match OS
+// Source - https://stackoverflow.com/a
+// Posted by Mark Szabo, modified by community. See post 'Timeline' for change history
+// Retrieved 2025-12-05, License - CC BY-SA 4.0
+
+if (
+  // deno-lint-ignore no-window
+  window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+) {
+  // dark mode
+  themeManager.applyTheme(ThemeType.DARK);
+} else {
+  themeManager.applyTheme(ThemeType.LIGHT);
+}
+
 themeManager.registerUIElement(sceneManager.getSceneIndicatorElement());
 themeManager.registerUIElement(sceneManager.getInstructionsElement());
 themeManager.registerUIElement(sceneManager.getInventoryHudElement());
