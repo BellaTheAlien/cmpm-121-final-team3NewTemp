@@ -1193,9 +1193,24 @@ touchRestart.style.zIndex = "2000";
 touchRestart.style.touchAction = "none";
 document.body.appendChild(touchRestart);
 
+const touchSwapScene = document.createElement("button");
+touchSwapScene.textContent = "SCENE";
+touchSwapScene.style.position = "fixed";
+touchSwapScene.style.left = "40px";
+touchSwapScene.style.bottom = "200px";
+touchSwapScene.style.padding = "25px 25px";
+touchSwapScene.style.fontSize = "28px";
+touchSwapScene.style.borderRadius = "12px";
+touchSwapScene.style.background = "rgba(255,255,255,0.5)";
+touchSwapScene.style.color = "black";
+touchSwapScene.style.zIndex = "2000";
+touchSwapScene.style.touchAction = "none";
+document.body.appendChild(touchSwapScene);
+
 themeManager.registerUIElement(touchJoystick);
 themeManager.registerUIElement(touchInteract);
 themeManager.registerUIElement(touchRestart);
+themeManager.registerUIElement(touchSwapScene);
 
 ///////////////////////////////
 // TOUCH MOVEMENT & LOOK
@@ -1280,6 +1295,18 @@ touchRestart.addEventListener("touchstart", () => {
   setTimeout(() => {
     keys.r = false;
   }, 150);
+});
+
+touchSwapScene.addEventListener("touchstart", () => {
+  if (sceneManager.getCurrentScene() == SceneType.TEMPLE_ONE) {
+    sceneManager.switchScene(SceneType.TEMPLE_TWO);
+  } else if (sceneManager.getCurrentScene() == SceneType.TEMPLE_TWO) {
+    sceneManager.switchScene(SceneType.TEMPLE_THREE);
+  } else if (sceneManager.getCurrentScene() == SceneType.TEMPLE_THREE) {
+    sceneManager.switchScene(SceneType.DOOR_SCENE);
+  } else {
+    sceneManager.switchScene(SceneType.TEMPLE_ONE);
+  }
 });
 
 ///////////////////////////////
