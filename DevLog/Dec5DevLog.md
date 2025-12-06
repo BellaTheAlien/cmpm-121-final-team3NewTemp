@@ -46,4 +46,6 @@ Added an unlimted redo function that resets the puzzle in the current scene, as 
 
 ## Reflection
 
-Looking back on how you achieved the F3 requirements, how has your team’s plan changed since your F3 devlog? There’s learning value in you documenting how your team’s thinking has changed over time.
+For F3 we have changed so much of what we've had to start with. Our first builds where just sandboxes for us to mess around with the 3D mobles and physics. Then was we wanted to add some of the requirements for F3 we had to take a step back and re-structure the game world. Starting by adding diffrent scenes so that the world is not overloading with trying to load in 3 diffrent models, then came the UI as most of our win and lose cons where console logs, finally theres the last puzzle scene that can only be solved by solving the other scences first.
+
+After completing all of this our team could finally turn to the F3 requirements, and as we where satisfied with the game play; the requirements where a bit less complect to add on.
