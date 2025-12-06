@@ -1,9 +1,11 @@
 # Devlog Entry - [December 5, 2025]
 
-## Selected requirements
+## Selected Requirements
+
 Identify which of the many options for F3 requirements that your team has decided to satisfy. For each one, offer a sentence or two of detail about why your team selected this requirement. Perhaps it is because it was already satisfied by your F2 design, that it seemed like it would be easy, or that it represents a skill you want to develop or practice.
 
-## How we satisfied the software requirements
+## How We Satisfied the Software Requirements
+
 For each of your chosen F3 requirements, give a paragraph of explanation for how your project's implementation satisfies the requirements.
 
 ### Continuous Inventory
@@ -15,6 +17,7 @@ For each of your chosen F3 requirements, give a paragraph of explanation for how
 ### Unlimited Undo
 
 ## Reflection
+
 Looking back on how you achieved the F3 requirements, how has your team’s plan changed since your F3 devlog? There’s learning value in you documenting how your team’s thinking has changed over time.
 
 ### Testing Lead Neila
